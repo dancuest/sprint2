@@ -1,8 +1,7 @@
 package com.example.animedev20.ui.theme.data
 
 import com.example.animedev20.ui.theme.domain.model.Anime
-import java.net.HttpURLConnection
-import java.net.URL
+import java.net.URLEncoder
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,7 +21,7 @@ object MangaPlusLinkVerifier {
     }
 
     private fun verifyAnimeLink(anime: Anime): MangaPlusLinkIssue? {
-        if (!anime.mangaPlusUrl.startsWith("https://mangaplus.shueisha.co.jp/titles/")) {
+        if (!anime.mangaPlusUrl.startsWith("https://mangaplus.shueisha.co.jp/titles")) {
             return MangaPlusLinkIssue(
                 animeId = anime.id,
                 animeTitle = anime.title,
@@ -30,33 +29,21 @@ object MangaPlusLinkVerifier {
                 reason = "La URL no pertenece al dominio oficial de Manga Plus."
             )
         }
-        return runCatching {
-            val connection = URL(anime.mangaPlusUrl).openConnection() as HttpURLConnection
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
-            connection.setRequestProperty("User-Agent", "AnimeDev/1.0")
-            val html = connection.inputStream.bufferedReader().use { it.readText() }
-            val normalizedHtml = html.lowercase(Locale.getDefault())
-            val expectedTitles = listOfNotNull(anime.title, anime.originalTitle)
-                .map { it.lowercase(Locale.getDefault()) }
-            val matches = expectedTitles.any { normalizedHtml.contains(it) }
-            if (matches) {
-                null
-            } else {
-                MangaPlusLinkIssue(
-                    animeId = anime.id,
-                    animeTitle = anime.title,
-                    url = anime.mangaPlusUrl,
-                    reason = "El título del anime no coincide con el contenido detectado en la página."
-                )
-            }
-        }.getOrElse { error ->
-            MangaPlusLinkIssue(
-                animeId = anime.id,
-                animeTitle = anime.title,
-                url = anime.mangaPlusUrl,
-                reason = "No se pudo verificar la URL (${error.message})."
-            )
+        val normalizedUrl = anime.mangaPlusUrl.lowercase(Locale.getDefault())
+        val expectedTitles = listOfNotNull(anime.title, anime.originalTitle)
+            .map { it.lowercase(Locale.getDefault()) }
+        val matches = expectedTitles.any { title ->
+            val encodedTitle = URLEncoder.encode(title, "UTF-8")
+            normalizedUrl.contains(encodedTitle)
         }
+        if (matches) {
+            return null
+        }
+        return MangaPlusLinkIssue(
+            animeId = anime.id,
+            animeTitle = anime.title,
+            url = anime.mangaPlusUrl,
+            reason = "El enlace de búsqueda no incluye el título esperado del anime."
+        )
     }
 }

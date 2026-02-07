@@ -238,7 +238,7 @@ private fun ActionButtons(
         OutlinedButton(onClick = onManga, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.MenuBook, contentDescription = null)
             Spacer(modifier = Modifier.size(8.dp))
-            Text("Ir al manga en Manga Plus")
+            Text("Buscar manga en Manga Plus")
         }
     }
 }

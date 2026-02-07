@@ -30,7 +30,7 @@ object FakeDataSource {
             originalTitle = "Kimetsu no Yaiba",
             synopsis = "Tanjiro se convierte en cazador de demonios para salvar a su hermana y vengar a su familia.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1286/99889.jpg",
-            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200016",
+            mangaPlusUrl = buildMangaPlusSearchUrl("Demon Slayer"),
             totalEpisodes = 26,
             durationType = DurationType.MEDIUM,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -44,7 +44,7 @@ object FakeDataSource {
             originalTitle = "Vinland Saga",
             synopsis = "Thorfinn busca venganza en una historia épica sobre exploración y honor vikingo.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1907/117414.jpg",
-            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200019",
+            mangaPlusUrl = buildMangaPlusSearchUrl("Vinland Saga"),
             totalEpisodes = 48,
             durationType = DurationType.LONG,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -58,7 +58,7 @@ object FakeDataSource {
             originalTitle = "Made in Abyss",
             synopsis = "Riko y Reg descienden a un abismo lleno de criaturas extrañas y misterios ancestrales.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/6/86733.jpg",
-            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200017",
+            mangaPlusUrl = buildMangaPlusSearchUrl("Made in Abyss"),
             totalEpisodes = 13,
             durationType = DurationType.SHORT,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -72,7 +72,7 @@ object FakeDataSource {
             originalTitle = "Jujutsu Kaisen",
             synopsis = "Itadori se enfrenta a maldiciones para proteger a quienes ama mientras aprende artes ocultas.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1171/109222.jpg",
-            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200018",
+            mangaPlusUrl = buildMangaPlusSearchUrl("Jujutsu Kaisen"),
             totalEpisodes = 24,
             durationType = DurationType.MEDIUM,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -86,7 +86,7 @@ object FakeDataSource {
             originalTitle = "Monster",
             synopsis = "El doctor Tenma persigue a un asesino en serie en un thriller psicológico lleno de suspense.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/10/18793.jpg",
-            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200020",
+            mangaPlusUrl = buildMangaPlusSearchUrl("Monster"),
             totalEpisodes = 74,
             durationType = DurationType.LONG,
             emissionStatus = EmissionStatus.FINISHED,
@@ -100,7 +100,7 @@ object FakeDataSource {
             originalTitle = "Hagane no Renkinjutsushi",
             synopsis = "Los hermanos Elric buscan la piedra filosofal para recuperar lo que perdieron tras un experimento fallido.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1223/96541.jpg",
-            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200021",
+            mangaPlusUrl = buildMangaPlusSearchUrl("Fullmetal Alchemist"),
             totalEpisodes = 64,
             durationType = DurationType.LONG,
             emissionStatus = EmissionStatus.FINISHED,
@@ -205,4 +205,7 @@ object FakeDataSource {
 
     private fun buildYouTubeSearchUrl(query: String): String =
         "https://www.youtube.com/results?search_query=${URLEncoder.encode(query, "UTF-8")}"
+
+    private fun buildMangaPlusSearchUrl(query: String): String =
+        "https://mangaplus.shueisha.co.jp/titles?search=${URLEncoder.encode(query, "UTF-8")}"
 }
