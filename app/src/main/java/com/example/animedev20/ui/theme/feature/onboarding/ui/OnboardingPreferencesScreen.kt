@@ -29,6 +29,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -236,17 +237,23 @@ private fun DurationPreferenceCard(
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = borderStroke
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = durationLabel(durationType),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = durationDescription(durationType),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(selected = selected, onClick = onClick)
+            Column(modifier = Modifier.padding(start = 12.dp)) {
+                Text(
+                    text = durationLabel(durationType),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = durationDescription(durationType),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
     }
 }

@@ -15,6 +15,7 @@ data class Anime(
                  val originalTitle: String?,
                  val synopsis: String,
                  val coverImageUrl: String,
+                 val mangaPlusUrl: String,
                  val totalEpisodes: Int?,
                  val durationType: DurationType,
                  val emissionStatus: EmissionStatus,

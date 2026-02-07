@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.AssistChip
@@ -47,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -56,7 +58,7 @@ import coil.compose.AsyncImage
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.AnimeDetail
-import com.example.animedev20.ui.theme.domain.model.Episode
+import com.example.animedev20.ui.theme.domain.model.Trailer
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.EmissionStatus
 import com.example.animedev20.ui.theme.domain.model.Genre
@@ -106,6 +108,7 @@ private fun AnimeDetailContent(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         rememberTopAppBarState()
     )
+    val uriHandler = LocalUriHandler.current
     Scaffold(
         topBar = {
             LargeTopAppBar(
@@ -145,7 +148,13 @@ private fun AnimeDetailContent(
         ) {
             item { AnimeHeroSection(anime = detail.anime) }
             item {
-                ActionButtons(onPlay = onPlay, onTrivia = onTrivia)
+                ActionButtons(
+                    onPlay = onPlay,
+                    onTrivia = onTrivia,
+                    onManga = {
+                        uriHandler.openUri(detail.anime.mangaPlusUrl)
+                    }
+                )
             }
             item { GenreSection(genres = detail.anime.genres) }
             item {
@@ -155,9 +164,9 @@ private fun AnimeDetailContent(
                 )
             }
             item { AnimeStats(anime = detail.anime) }
-            item { EpisodesHeader(detail.episodes.size) }
-            items(detail.episodes, key = { it.number }) { episode ->
-                EpisodeRow(episode = episode)
+            item { TrailersHeader(detail.trailers.size) }
+            items(detail.trailers, key = { it.number }) { trailer ->
+                TrailerRow(trailer = trailer)
             }
         }
     }
@@ -207,19 +216,26 @@ private fun AnimeHeroSection(anime: Anime) {
 @Composable
 private fun ActionButtons(
     onPlay: () -> Unit,
-    onTrivia: () -> Unit
+    onTrivia: () -> Unit,
+    onManga: () -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
         Button(onClick = onPlay, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.PlayArrow, contentDescription = null)
             Spacer(modifier = Modifier.size(8.dp))
-            Text("Ver desde el primer episodio")
+            Text("Ver trailer principal")
         }
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedButton(onClick = onTrivia, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Outlined.HelpOutline, contentDescription = null)
             Spacer(modifier = Modifier.size(8.dp))
             Text("Jugar trivia")
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedButton(onClick = onManga, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.MenuBook, contentDescription = null)
+            Spacer(modifier = Modifier.size(8.dp))
+            Text("Ir al manga en Manga Plus")
         }
     }
 }
@@ -306,9 +322,9 @@ private fun RowOfStats(label: String, value: String) {
 }
 
 @Composable
-private fun EpisodesHeader(totalEpisodes: Int) {
+private fun TrailersHeader(totalTrailers: Int) {
     Text(
-        text = "Lista de episodios ($totalEpisodes)",
+        text = "Lista de trailers ($totalTrailers)",
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -316,7 +332,7 @@ private fun EpisodesHeader(totalEpisodes: Int) {
 }
 
 @Composable
-private fun EpisodeRow(episode: Episode) {
+private fun TrailerRow(trailer: Trailer) {
     Card(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 6.dp)
@@ -325,17 +341,17 @@ private fun EpisodeRow(episode: Episode) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Episodio ${episode.number} · ${episode.durationMinutes} min",
+                text = "Trailer ${trailer.number} · ${trailer.durationMinutes} min",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = episode.title,
+                text = trailer.title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = episode.synopsis,
+                text = trailer.description,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,

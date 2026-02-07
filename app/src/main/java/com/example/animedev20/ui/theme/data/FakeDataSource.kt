@@ -5,7 +5,7 @@ import com.example.animedev20.ui.theme.domain.model.AnimeDetail
 import com.example.animedev20.ui.theme.domain.model.AnimeSection
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.EmissionStatus
-import com.example.animedev20.ui.theme.domain.model.Episode
+import com.example.animedev20.ui.theme.domain.model.Trailer
 import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.TriviaProfileStats
 import com.example.animedev20.ui.theme.domain.model.UserProfile
@@ -29,6 +29,7 @@ object FakeDataSource {
             originalTitle = "Kimetsu no Yaiba",
             synopsis = "Tanjiro se convierte en cazador de demonios para salvar a su hermana y vengar a su familia.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1286/99889.jpg",
+            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200016",
             totalEpisodes = 26,
             durationType = DurationType.MEDIUM,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -42,6 +43,7 @@ object FakeDataSource {
             originalTitle = "Vinland Saga",
             synopsis = "Thorfinn busca venganza en una historia épica sobre exploración y honor vikingo.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1907/117414.jpg",
+            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200019",
             totalEpisodes = 48,
             durationType = DurationType.LONG,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -55,6 +57,7 @@ object FakeDataSource {
             originalTitle = "Made in Abyss",
             synopsis = "Riko y Reg descienden a un abismo lleno de criaturas extrañas y misterios ancestrales.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/6/86733.jpg",
+            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200017",
             totalEpisodes = 13,
             durationType = DurationType.SHORT,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -68,6 +71,7 @@ object FakeDataSource {
             originalTitle = "Jujutsu Kaisen",
             synopsis = "Itadori se enfrenta a maldiciones para proteger a quienes ama mientras aprende artes ocultas.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1171/109222.jpg",
+            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200018",
             totalEpisodes = 24,
             durationType = DurationType.MEDIUM,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -81,6 +85,7 @@ object FakeDataSource {
             originalTitle = "Monster",
             synopsis = "El doctor Tenma persigue a un asesino en serie en un thriller psicológico lleno de suspense.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/10/18793.jpg",
+            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200020",
             totalEpisodes = 74,
             durationType = DurationType.LONG,
             emissionStatus = EmissionStatus.FINISHED,
@@ -94,6 +99,7 @@ object FakeDataSource {
             originalTitle = "Hagane no Renkinjutsushi",
             synopsis = "Los hermanos Elric buscan la piedra filosofal para recuperar lo que perdieron tras un experimento fallido.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1223/96541.jpg",
+            mangaPlusUrl = "https://mangaplus.shueisha.co.jp/titles/200021",
             totalEpisodes = 64,
             durationType = DurationType.LONG,
             emissionStatus = EmissionStatus.FINISHED,
@@ -102,9 +108,9 @@ object FakeDataSource {
         )
     )
 
-    private val episodesByAnime: Map<Long, List<Episode>> =
+    private val trailersByAnime: Map<Long, List<Trailer>> =
         animeCatalog.associate { anime ->
-            anime.id to buildEpisodesFor(anime.title)
+            anime.id to buildTrailersFor(anime.title)
         }
     val heroAnime: Anime = animeCatalog.first()
 
@@ -174,17 +180,17 @@ object FakeDataSource {
                 "Contexto histórico del año ${anime.releaseYear ?: "N/A"}",
                 "Referencias gastronómicas y festividades mostradas en la serie"
             ),
-            episodes = episodesByAnime[animeId].orEmpty()
+            trailers = trailersByAnime[animeId].orEmpty()
         )
     }
 
-    private fun buildEpisodesFor(title: String): List<Episode> =
-        List(8) { index ->
-            Episode(
+    private fun buildTrailersFor(title: String): List<Trailer> =
+        List(4) { index ->
+            Trailer(
                 number = index + 1,
-                title = "Episodio ${index + 1}",
-                durationMinutes = 24,
-                synopsis = "Resumen del episodio ${index + 1} de $title con apuntes culturales relevantes."
+                title = "Trailer ${index + 1}",
+                durationMinutes = 2 + index,
+                description = "Avance destacado del trailer ${index + 1} de $title para animarte a descubrir la historia."
             )
         }
 }
