@@ -29,7 +29,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -148,7 +148,7 @@ fun OnboardingPreferencesScreen(
                     }
                     item {
                         Text(
-                            text = "Elige la duración que prefieres",
+                            text = "Elige una o más duraciones",
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -156,7 +156,7 @@ fun OnboardingPreferencesScreen(
                             DurationType.values().forEach { duration ->
                                 DurationPreferenceCard(
                                     durationType = duration,
-                                    selected = state.preferredDuration == duration,
+                                    selected = state.preferredDurations.contains(duration),
                                     onClick = { onDurationSelected(duration) }
                                 )
                             }
@@ -170,7 +170,7 @@ fun OnboardingPreferencesScreen(
                             Button(
                                 onClick = onContinue,
                                 enabled = state.selectedGenres.isNotEmpty() &&
-                                        state.preferredDuration != null &&
+                                        state.preferredDurations.isNotEmpty() &&
                                         !state.isSaving,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -241,7 +241,7 @@ private fun DurationPreferenceCard(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            RadioButton(selected = selected, onClick = onClick)
+            Checkbox(checked = selected, onCheckedChange = { onClick() })
             Column(modifier = Modifier.padding(start = 12.dp)) {
                 Text(
                     text = durationLabel(durationType),
@@ -317,7 +317,7 @@ private fun OnboardingPreferencesPreview() {
                 isLoading = false,
                 availableGenres = FakeDataSource.genres,
                 selectedGenres = emptySet(),
-                preferredDuration = null
+                preferredDurations = emptySet()
             ),
             onGenreSelected = {},
             onDurationSelected = {},

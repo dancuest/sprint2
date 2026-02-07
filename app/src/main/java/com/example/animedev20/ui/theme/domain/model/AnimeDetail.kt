@@ -4,7 +4,8 @@ data class Trailer(
                    val number: Int,
                    val title: String,
                    val durationMinutes: Int,
-                   val description: String
+                   val description: String,
+                   val youtubeUrl: String
 )
 
 data class AnimeDetail(

@@ -5,12 +5,13 @@ import com.example.animedev20.ui.theme.domain.model.AnimeDetail
 import com.example.animedev20.ui.theme.domain.model.AnimeSection
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.EmissionStatus
-import com.example.animedev20.ui.theme.domain.model.Trailer
 import com.example.animedev20.ui.theme.domain.model.Genre
+import com.example.animedev20.ui.theme.domain.model.Trailer
 import com.example.animedev20.ui.theme.domain.model.TriviaProfileStats
 import com.example.animedev20.ui.theme.domain.model.UserProfile
 import com.example.animedev20.ui.theme.domain.model.UserSettings
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
+import java.net.URLEncoder
 
 object FakeDataSource {
     val shonen = Genre(id = "1", name = "Shonen")
@@ -118,7 +119,7 @@ object FakeDataSource {
 
     val defaultUserSettings = UserSettings(
         preferredGenres = preferredGenres,
-        preferredDuration = DurationType.MEDIUM,
+        preferredDurations = listOf(DurationType.MEDIUM),
         notificationsEnabled = true,
         culturalAlertsEnabled = true,
         autoplayNextEpisode = true,
@@ -136,7 +137,7 @@ object FakeDataSource {
         biography = "Apasionado por descubrir las referencias históricas y gastronómicas escondidas en cada anime.",
         totalAnimesWatched = 42,
         completedTrivias = 18,
-        preferredDuration = defaultUserSettings.preferredDuration,
+        preferredDurations = defaultUserSettings.preferredDurations,
         favoriteGenres = preferredGenres,
         badges = listOf(
             "Embajador del Shonen",
@@ -184,13 +185,24 @@ object FakeDataSource {
         )
     }
 
-    private fun buildTrailersFor(title: String): List<Trailer> =
-        List(4) { index ->
+    private fun buildTrailersFor(title: String): List<Trailer> {
+        val trailerQueries = listOf(
+            "trailer oficial",
+            "trailer temporada 1",
+            "opening trailer",
+            "trailer subtitulado"
+        )
+        return trailerQueries.mapIndexed { index, query ->
             Trailer(
                 number = index + 1,
-                title = "Trailer ${index + 1}",
+                title = "Trailer ${index + 1} en YouTube",
                 durationMinutes = 2 + index,
-                description = "Avance destacado del trailer ${index + 1} de $title para animarte a descubrir la historia."
+                description = "Búsqueda en YouTube de \"$title $query\" para ver avances oficiales y fanmade.",
+                youtubeUrl = buildYouTubeSearchUrl("$title $query")
             )
         }
+    }
+
+    private fun buildYouTubeSearchUrl(query: String): String =
+        "https://www.youtube.com/results?search_query=${URLEncoder.encode(query, "UTF-8")}"
 }

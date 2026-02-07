@@ -37,7 +37,7 @@ object FakeUserRepositoryImpl : UserRepository {
         cachedSettings = settings
         val updatedProfile = profileFlow.value.copy(
             favoriteGenres = settings.preferredGenres,
-            preferredDuration = settings.preferredDuration
+            preferredDurations = settings.preferredDurations
         )
         profileFlow.value = updatedProfile
         return cachedSettings

@@ -13,7 +13,7 @@ data class UserProfile(
     val biography: String,
     val totalAnimesWatched: Int,
     val completedTrivias: Int,
-    val preferredDuration: DurationType,
+    val preferredDurations: List<DurationType>,
     val favoriteGenres: List<Genre>,
     val badges: List<String>,
     val favoriteQuote: String? = null
@@ -21,7 +21,7 @@ data class UserProfile(
 
 data class UserSettings(
     val preferredGenres: List<Genre>,
-    val preferredDuration: DurationType,
+    val preferredDurations: List<DurationType>,
     val notificationsEnabled: Boolean,
     val culturalAlertsEnabled: Boolean,
     val autoplayNextEpisode: Boolean,

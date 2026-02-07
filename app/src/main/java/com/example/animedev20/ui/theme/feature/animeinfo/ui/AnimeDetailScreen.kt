@@ -166,7 +166,10 @@ private fun AnimeDetailContent(
             item { AnimeStats(anime = detail.anime) }
             item { TrailersHeader(detail.trailers.size) }
             items(detail.trailers, key = { it.number }) { trailer ->
-                TrailerRow(trailer = trailer)
+                TrailerRow(
+                    trailer = trailer,
+                    onWatch = { url -> uriHandler.openUri(url) }
+                )
             }
         }
     }
@@ -324,7 +327,7 @@ private fun RowOfStats(label: String, value: String) {
 @Composable
 private fun TrailersHeader(totalTrailers: Int) {
     Text(
-        text = "Lista de trailers ($totalTrailers)",
+        text = "Lista de trailers en YouTube ($totalTrailers)",
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -332,7 +335,10 @@ private fun TrailersHeader(totalTrailers: Int) {
 }
 
 @Composable
-private fun TrailerRow(trailer: Trailer) {
+private fun TrailerRow(
+    trailer: Trailer,
+    onWatch: (String) -> Unit
+) {
     Card(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 6.dp)
@@ -357,6 +363,12 @@ private fun TrailerRow(trailer: Trailer) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp)
             )
+            OutlinedButton(
+                onClick = { onWatch(trailer.youtubeUrl) },
+                modifier = Modifier.padding(top = 12.dp)
+            ) {
+                Text("Ver en YouTube")
+            }
         }
     }
 }

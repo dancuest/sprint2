@@ -135,10 +135,12 @@ private fun ProfileContent(
                         )
                     )
                 }
-                AssistChip(
-                    onClick = {},
-                    label = { Text(durationPreferenceLabel(profile.preferredDuration)) }
-                )
+                profile.preferredDurations.forEach { duration ->
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(durationPreferenceLabel(duration)) }
+                    )
+                }
             }
         }
         if (recentAnimes.isNotEmpty()) {
