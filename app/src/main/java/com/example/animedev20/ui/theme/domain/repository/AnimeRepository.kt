@@ -7,4 +7,5 @@ interface AnimeRepository {
     suspend fun getHeroRecommendation(): Anime
     suspend fun getAnimesByGenre(genreId: String): List<Anime>
     suspend fun getAnimeDetail(animeId: Long): AnimeDetail
+    suspend fun searchAnime(query: String): List<Anime>
 }
