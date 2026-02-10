@@ -1,6 +1,7 @@
 package com.example.animedev20.ui.theme.data
 
 import com.example.animedev20.ui.theme.data.remote.AnimeApiFactory
+import com.example.animedev20.ui.theme.data.remote.ApiConfig
 import com.example.animedev20.ui.theme.data.repository.FakeAnimeRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FakeFavoritesRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FakeTriviaRepositoryImpl
@@ -23,6 +24,7 @@ interface AppContainer {
 
 class DefaultAppContainer(
     baseUrl: String = DEFAULT_BASE_URL,
+    baseUrl: String = ApiConfig.BASE_URL,
     useRemote: Boolean = USE_REMOTE
 ) : AppContainer {
     private val animeApi = AnimeApiFactory.create(baseUrl)
@@ -33,7 +35,7 @@ class DefaultAppContainer(
         FakeAnimeRepositoryImpl()
     }
 
-    override val favoritesRepository: FavoritesRepository = FakeFavoritesRepositoryImpl
-    override val triviaRepository: TriviaRepository = FakeTriviaRepositoryImpl
-    override val userRepository: UserRepository = FakeUserRepositoryImpl
+    override val favoritesRepository: FavoritesRepository = FakeFavoritesRepositoryImpl()
+    override val triviaRepository: TriviaRepository = FakeTriviaRepositoryImpl()
+    override val userRepository: UserRepository = FakeUserRepositoryImpl()
 }
