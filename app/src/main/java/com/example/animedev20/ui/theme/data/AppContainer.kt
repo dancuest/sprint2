@@ -33,7 +33,7 @@ class DefaultAppContainer(
         FakeAnimeRepositoryImpl()
     }
 
-    override val favoritesRepository: FavoritesRepository = FakeFavoritesRepositoryImpl()
-    override val triviaRepository: TriviaRepository = FakeTriviaRepositoryImpl()
-    override val userRepository: UserRepository = FakeUserRepositoryImpl()
+    override val favoritesRepository: FavoritesRepository = FakeFavoritesRepositoryImpl
+    override val triviaRepository: TriviaRepository = FakeTriviaRepositoryImpl
+    override val userRepository: UserRepository = FakeUserRepositoryImpl
 }
