@@ -146,7 +146,7 @@ private fun SettingsContent(
             )
         }
         item {
-            SettingSectionTitle(title = "Duración preferida de las series")
+            SettingSectionTitle(title = "Duraciones preferidas de las series")
             Row(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
@@ -157,7 +157,7 @@ private fun SettingsContent(
                     DurationPreferenceChip(
                         label = durationLabel(duration),
                         description = durationDescription(duration),
-                        selected = state.preferredDuration == duration,
+                        selected = state.preferredDurations.contains(duration),
                         onClick = { onDurationSelected(duration) },
                         modifier = Modifier.weight(1f)
                     )
@@ -308,7 +308,7 @@ private fun DurationPreferenceChip(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-            Text(if (selected) "Elegido" else "Elegir")
+            Text(if (selected) "Quitar" else "Agregar")
         }
     }
 }
@@ -334,7 +334,7 @@ private fun SettingsContentPreview() {
                 isLoading = false,
                 availableGenres = FakeDataSource.genres,
                 selectedGenres = FakeDataSource.preferredGenres.map { it.id }.toSet(),
-                preferredDuration = DurationType.MEDIUM,
+                preferredDurations = setOf(DurationType.MEDIUM),
                 notificationsEnabled = true,
                 culturalAlertsEnabled = true,
                 autoplayNextEpisode = true,
