@@ -20,12 +20,13 @@ class RemoteAnimeRepositoryImpl(
         return fetchWithFallback(
             primary = { animeApi.getHero().data },
             fallback = fallback,
-            errorMessage = "No fue posible cargar el anime destacado. Intenta más tarde."
+            errorMessage = "No fue posible cargar el anime destacado.\nIntenta más tarde."
         )
     }
 
     override suspend fun getAnimesByGenre(genreId: String): List<Anime> {
         val fallback = suspend { animeApi.getTop(limit = 10).data }
+
         return fetchWithFallback(
             primary = { animeApi.getByGenre(genreId = genreId, limit = 10).data },
             fallback = fallback,
@@ -55,7 +56,7 @@ class RemoteAnimeRepositoryImpl(
 
     override suspend fun getGenres(): List<Genre> {
         return safeCall(
-            call = { animeApi.getGenres(includeAdult = false).data },
+            call = { animeApi.getGenres().data },
             errorMessage = "No fue posible cargar la lista de géneros."
         )
     }
@@ -68,13 +69,14 @@ class RemoteAnimeRepositoryImpl(
         return try {
             primary()
         } catch (error: HttpException) {
-            if (error.code() == 404) {
-                safeCall(fallback, errorMessage)
-            } else {
-                throw Exception(errorMessage)
+            // Fallback también para rate-limit / gateway / server errors
+            when (error.code()) {
+                404, 408, 429, 500, 502, 503, 504 -> safeCall(fallback, errorMessage)
+                else -> throw Exception(errorMessage)
             }
         } catch (error: Exception) {
-            throw Exception(errorMessage)
+            // Si algo random truena (timeouts, etc), intenta fallback
+            safeCall(fallback, errorMessage)
         }
     }
 
