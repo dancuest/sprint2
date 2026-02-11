@@ -23,7 +23,7 @@ interface AppContainer {
 }
 
 class DefaultAppContainer(
-    baseUrl: String = ApiConfig.BASE_URL,
+    baseUrl: String = ApiConfig.baseUrl,
     useRemote: Boolean = USE_REMOTE
 ) : AppContainer {
     private val animeApi = AnimeApiFactory.create(baseUrl)
