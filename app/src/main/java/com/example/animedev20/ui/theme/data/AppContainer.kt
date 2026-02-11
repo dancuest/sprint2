@@ -13,6 +13,8 @@ import com.example.animedev20.ui.theme.domain.repository.TriviaRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 
 const val USE_REMOTE = true
+const val DEFAULT_BASE_URL = "http://10.0.2.2:3000/"
+
 interface AppContainer {
     val animeRepository: AnimeRepository
     val favoritesRepository: FavoritesRepository
@@ -21,6 +23,7 @@ interface AppContainer {
 }
 
 class DefaultAppContainer(
+    baseUrl: String = DEFAULT_BASE_URL,
     baseUrl: String = ApiConfig.BASE_URL,
     useRemote: Boolean = USE_REMOTE
 ) : AppContainer {
