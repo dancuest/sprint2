@@ -45,7 +45,11 @@ class OnboardingPreferencesViewModel(
                             } else {
                                 emptySet()
                             },
-                            preferredDuration = if (shouldPrefill) settings.preferredDuration else null,
+                            preferredDurations = if (shouldPrefill) {
+                                settings.preferredDurations.toSet()
+                            } else {
+                                emptySet()
+                            },
                             notificationsEnabled = settings.notificationsEnabled,
                             culturalAlertsEnabled = settings.culturalAlertsEnabled,
                             autoplayNextEpisode = if (shouldPrefill) {
@@ -80,21 +84,29 @@ class OnboardingPreferencesViewModel(
     }
 
     fun onDurationSelected(duration: DurationType) {
-        _uiState.update { it.copy(preferredDuration = duration) }
+        _uiState.update { state ->
+            val updated = state.preferredDurations.toMutableSet().apply {
+                if (!add(duration)) remove(duration)
+            }
+            state.copy(preferredDurations = updated)
+        }
     }
 
     fun onContinue() {
         val currentState = _uiState.value
         if (currentState.isSaving || currentState.selectedGenres.isEmpty()) return
-        val preferredDuration = currentState.preferredDuration ?: return
+        if (currentState.preferredDurations.isEmpty()) return
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
             val selectedGenres = FakeDataSource.genres.filter { genre ->
                 currentState.selectedGenres.contains(genre.id)
             }
+            val preferredDurations = DurationType.values().filter { duration ->
+                currentState.preferredDurations.contains(duration)
+            }
             val settings = UserSettings(
                 preferredGenres = selectedGenres,
-                preferredDuration = preferredDuration,
+                preferredDurations = preferredDurations,
                 notificationsEnabled = currentState.notificationsEnabled,
                 culturalAlertsEnabled = currentState.culturalAlertsEnabled,
                 autoplayNextEpisode = currentState.autoplayNextEpisode,
@@ -133,7 +145,7 @@ data class OnboardingPreferencesUiState(
     val isLoading: Boolean = true,
     val availableGenres: List<Genre> = emptyList(),
     val selectedGenres: Set<String> = emptySet(),
-    val preferredDuration: DurationType? = null,
+    val preferredDurations: Set<DurationType> = emptySet(),
     val notificationsEnabled: Boolean = true,
     val culturalAlertsEnabled: Boolean = true,
     val autoplayNextEpisode: Boolean = true,

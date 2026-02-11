@@ -23,4 +23,14 @@ class FakeAnimeRepositoryImpl : AnimeRepository {
         delay(500)
         return FakeDataSource.getAnimeDetail(animeId)
     }
+
+    override suspend fun searchAnime(query: String): List<Anime> {
+        delay(400)
+        return FakeDataSource.animeCatalog.filter { anime ->
+            val normalizedQuery = query.trim().lowercase()
+            anime.title.lowercase().contains(normalizedQuery) ||
+                anime.synopsis.lowercase().contains(normalizedQuery) ||
+                (anime.originalTitle?.lowercase()?.contains(normalizedQuery) ?: false)
+        }
+    }
 }

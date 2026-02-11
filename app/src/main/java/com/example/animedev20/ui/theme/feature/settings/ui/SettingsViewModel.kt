@@ -42,7 +42,7 @@ class SettingsViewModel(
                         isLoading = false,
                         availableGenres = FakeDataSource.genres,
                         selectedGenres = settings.preferredGenres.map { genre -> genre.id }.toSet(),
-                        preferredDuration = settings.preferredDuration,
+                        preferredDurations = settings.preferredDurations.toSet(),
                         notificationsEnabled = settings.notificationsEnabled,
                         culturalAlertsEnabled = settings.culturalAlertsEnabled,
                         autoplayNextEpisode = settings.autoplayNextEpisode,
@@ -74,7 +74,12 @@ class SettingsViewModel(
     }
 
     fun onDurationSelected(duration: DurationType) {
-        _uiState.update { it.copy(preferredDuration = duration) }
+        _uiState.update { state ->
+            val updated = state.preferredDurations.toMutableSet().apply {
+                if (!add(duration)) remove(duration)
+            }
+            state.copy(preferredDurations = updated)
+        }
     }
 
     fun onNotificationsToggled(enabled: Boolean) {
@@ -108,7 +113,9 @@ class SettingsViewModel(
                 preferredGenres = FakeDataSource.genres.filter { genre ->
                     state.selectedGenres.contains(genre.id)
                 },
-                preferredDuration = state.preferredDuration,
+                preferredDurations = DurationType.values().filter { duration ->
+                    state.preferredDurations.contains(duration)
+                },
                 notificationsEnabled = state.notificationsEnabled,
                 culturalAlertsEnabled = state.culturalAlertsEnabled,
                 autoplayNextEpisode = state.autoplayNextEpisode,
@@ -171,7 +178,7 @@ data class SettingsUiState(
     val isLoading: Boolean = true,
     val availableGenres: List<Genre> = emptyList(),
     val selectedGenres: Set<String> = emptySet(),
-    val preferredDuration: DurationType = DurationType.MEDIUM,
+    val preferredDurations: Set<DurationType> = setOf(DurationType.MEDIUM),
     val notificationsEnabled: Boolean = true,
     val culturalAlertsEnabled: Boolean = true,
     val autoplayNextEpisode: Boolean = true,
