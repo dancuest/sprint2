@@ -3,8 +3,8 @@ package com.example.animedev20.ui.theme.feature.home.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.animedev20.ui.theme.data.repository.FakeAnimeRepositoryImpl
-import com.example.animedev20.ui.theme.data.repository.FakeUserRepositoryImpl
+import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
+import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import com.example.animedev20.ui.theme.domain.usecase.GetHomeContentUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,12 +40,13 @@ class HomeViewModel(
     }
 
     companion object {
-        @Suppress("UNCHECKED_CAST")
-        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun provideFactory(
+            animeRepository: AnimeRepository,
+            userRepository: UserRepository
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
-                    val animeRepository = FakeAnimeRepositoryImpl()
-                    val userRepository = FakeUserRepositoryImpl
                     val useCase = GetHomeContentUseCase(animeRepository, userRepository)
                     return HomeViewModel(useCase) as T
                 }
