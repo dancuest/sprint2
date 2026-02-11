@@ -14,6 +14,10 @@ import com.example.animedev20.ui.theme.domain.repository.UserRepository
 
 // Aquí está la configuración que buscabas:
 const val USE_REMOTE = true
+<<<<<<< HEAD
+=======
+const val DEFAULT_BASE_URL = "http://10.0.2.2:3000/"
+>>>>>>> origin/codex/update-app-to-remove-anime-episodes
 
 interface AppContainer {
     val animeRepository: AnimeRepository
@@ -23,7 +27,12 @@ interface AppContainer {
 }
 
 class DefaultAppContainer(
+<<<<<<< HEAD
     baseUrl: String = ApiConfig.baseUrl,
+=======
+    baseUrl: String = DEFAULT_BASE_URL,
+    baseUrl: String = ApiConfig.BASE_URL,
+>>>>>>> origin/codex/update-app-to-remove-anime-episodes
     useRemote: Boolean = USE_REMOTE
 ) : AppContainer {
     private val animeApi = AnimeApiFactory.create(baseUrl)
