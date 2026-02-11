@@ -3,8 +3,6 @@ package com.example.animedev20.ui.theme.feature.trivia.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.animedev20.ui.theme.data.repository.FakeAnimeRepositoryImpl
-import com.example.animedev20.ui.theme.data.repository.FakeTriviaRepositoryImpl
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaQuestion
@@ -158,16 +156,19 @@ class TriviaPlayViewModel(
     }
 
     companion object {
-        fun provideFactory(animeId: Long): ViewModelProvider.Factory =
+        fun provideFactory(
+            animeId: Long,
+            animeRepository: AnimeRepository,
+            triviaRepository: TriviaRepository
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    val repository: AnimeRepository = FakeAnimeRepositoryImpl()
-                    val useCase = GetAnimeDetailUseCase(repository)
+                    val useCase = GetAnimeDetailUseCase(animeRepository)
                     return TriviaPlayViewModel(
                         animeId = animeId,
                         getAnimeDetailUseCase = useCase,
-                        triviaRepository = FakeTriviaRepositoryImpl
+                        triviaRepository = triviaRepository
                     ) as T
                 }
             }
