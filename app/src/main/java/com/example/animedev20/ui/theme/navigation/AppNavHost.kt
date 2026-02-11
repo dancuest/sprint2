@@ -8,6 +8,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.feature.animeinfo.ui.AnimeDetailScreen
 import com.example.animedev20.ui.theme.feature.favorites.ui.FavoritesScreen
 import com.example.animedev20.ui.theme.feature.home.ui.HomeScreen
@@ -21,6 +22,7 @@ import com.example.animedev20.ui.theme.feature.onboarding.ui.OnboardingPreferenc
 fun AppNavHost(
     navController: NavHostController,
     modifier: Modifier,
+    appContainer: AppContainer,
     startDestination: String = Screen.Home.route
 ) {
     NavHost(
@@ -30,6 +32,7 @@ fun AppNavHost(
     ) {
         composable(Screen.Onboarding.route) {
             OnboardingPreferencesRoute(
+                appContainer = appContainer,
                 onContinue = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }
@@ -39,9 +42,12 @@ fun AppNavHost(
             )
         }
         composable(Screen.Home.route) {
-            HomeScreen(onAnimeSelected = { animeId ->
-                navController.navigate(Screen.AnimeDetail.createRoute(animeId))
-            })
+            HomeScreen(
+                appContainer = appContainer,
+                onAnimeSelected = { animeId ->
+                    navController.navigate(Screen.AnimeDetail.createRoute(animeId))
+                }
+            )
         }
         composable(Screen.Favorites.route) {
             FavoritesScreen(onAnimeSelected = { animeId ->
@@ -62,6 +68,7 @@ fun AppNavHost(
             val animeId = backStackEntry.arguments?.getLong("animeId") ?: return@composable
             AnimeDetailScreen(
                 animeId = animeId,
+                appContainer = appContainer,
                 onBack = { navController.popBackStack() },
                 onTriviaRequested = { targetAnimeId ->
                     navController.navigate(Screen.TriviaPlay.createRoute(targetAnimeId))
