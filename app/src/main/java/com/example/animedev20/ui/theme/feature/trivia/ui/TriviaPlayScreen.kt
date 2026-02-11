@@ -45,6 +45,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.animedev20.ui.theme.data.AppContainer
+import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
@@ -58,7 +60,14 @@ fun TriviaPlayScreen(
     onBack: () -> Unit,
     onGoToHome: () -> Unit,
     onGoToTrivia: () -> Unit,
-    viewModel: TriviaPlayViewModel = viewModel(factory = TriviaPlayViewModel.provideFactory(animeId))
+    appContainer: AppContainer = DefaultAppContainer(),
+    viewModel: TriviaPlayViewModel = viewModel(
+        factory = TriviaPlayViewModel.provideFactory(
+            animeId = animeId,
+            animeRepository = appContainer.animeRepository,
+            triviaRepository = appContainer.triviaRepository
+        )
+    )
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()

@@ -33,5 +33,7 @@ interface AnimeApi {
     suspend fun getById(@Path("id") id: Long): ApiResponse<Anime>
 
     @GET("genres")
-    suspend fun getGenres(): ApiResponse<List<Genre>>
+    suspend fun getGenres(
+        @Query("includeAdult") includeAdult: Boolean = false
+    ): ApiResponse<List<Genre>>
 }

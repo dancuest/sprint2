@@ -82,6 +82,7 @@ fun AppNavHost(
             val animeId = backStackEntry.arguments?.getLong("animeId") ?: return@composable
             TriviaPlayScreen(
                 animeId = animeId,
+                appContainer = appContainer,
                 onBack = { navController.popBackStack() },
                 onGoToHome = {
                     navController.navigate(Screen.Home.route) {

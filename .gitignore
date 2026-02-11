@@ -13,3 +13,11 @@
 .externalNativeBuild
 .cxx
 local.properties
+# IDE / Android Studio
+.idea/
+*.iml
+
+# Kotlin build/cache/logs
+.kotlin/
+**/.kotlin/errors/
+*.log
