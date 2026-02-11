@@ -3,6 +3,7 @@ package com.example.animedev20.ui.theme.data.repository
 import com.example.animedev20.ui.theme.data.remote.AnimeApi
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.AnimeDetail
+import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import retrofit2.HttpException
 
@@ -49,6 +50,13 @@ class RemoteAnimeRepositoryImpl(
         return safeCall(
             call = { animeApi.search(q = query, limit = 10).data },
             errorMessage = "No fue posible realizar la búsqueda en este momento."
+        )
+    }
+
+    override suspend fun getGenres(): List<Genre> {
+        return safeCall(
+            call = { animeApi.getGenres().data },
+            errorMessage = "No fue posible cargar la lista de géneros."
         )
     }
 

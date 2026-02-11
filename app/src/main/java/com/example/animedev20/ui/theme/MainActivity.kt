@@ -11,16 +11,17 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.material3.CircularProgressIndicator
+import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.navigation.AppNavHost
 import com.example.animedev20.ui.theme.navigation.BottomNavigationBar
 import com.example.animedev20.ui.theme.navigation.Screen
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
-import com.example.animedev20.ui.theme.data.repository.FakeUserRepositoryImpl
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,8 +38,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
+    val appContainer = remember { DefaultAppContainer() }
     val startDestination by produceState<String?>(initialValue = null) {
-        val destination = runCatching { FakeUserRepositoryImpl.getUserSettings() }
+        val destination = runCatching { appContainer.userRepository.getUserSettings() }
             .map { settings ->
                 if (settings.hasCompletedOnboarding) Screen.Home.route else Screen.Onboarding.route
             }
@@ -70,7 +72,8 @@ fun MainScreen() {
             AppNavHost(
                 navController = navController,
                 modifier = Modifier.padding(innerPadding),
-                startDestination = startDestination!!
+                startDestination = startDestination!!,
+                appContainer = appContainer
             )
         }
     }

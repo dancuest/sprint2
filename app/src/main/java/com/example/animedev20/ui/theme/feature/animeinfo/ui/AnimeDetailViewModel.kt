@@ -3,8 +3,7 @@ package com.example.animedev20.ui.theme.feature.animeinfo.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.animedev20.ui.theme.data.repository.FakeAnimeRepositoryImpl
-import com.example.animedev20.ui.theme.data.repository.FakeFavoritesRepositoryImpl
+import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.FavoritesRepository
 import com.example.animedev20.ui.theme.domain.usecase.GetAnimeDetailUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,16 +66,19 @@ class AnimeDetailViewModel(
     }
 
     companion object {
-        fun provideFactory(animeId: Long): ViewModelProvider.Factory =
+        fun provideFactory(
+            animeId: Long,
+            animeRepository: AnimeRepository,
+            favoritesRepository: FavoritesRepository
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    val repository = FakeAnimeRepositoryImpl()
-                    val useCase = GetAnimeDetailUseCase(repository)
+                    val useCase = GetAnimeDetailUseCase(animeRepository)
                     return AnimeDetailViewModel(
                         animeId = animeId,
                         getAnimeDetailUseCase = useCase,
-                        favoritesRepository = FakeFavoritesRepositoryImpl
+                        favoritesRepository = favoritesRepository
                     ) as T
                 }
             }

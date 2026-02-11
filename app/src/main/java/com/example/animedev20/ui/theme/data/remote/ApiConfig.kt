@@ -4,7 +4,8 @@ import android.os.Build
 
 object ApiConfig {
     private const val EMULATOR_BASE_URL = "http://10.0.2.2:3000"
-    private const val DEVICE_BASE_URL = "http://localhost:3000"
+    // Reemplaza 192.168.1.100 por la IP local de tu PC cuando uses dispositivo físico.
+    private const val DEVICE_BASE_URL = "http://192.168.1.100:3000"
 
     val baseUrl: String
         get() = if (isEmulator()) EMULATOR_BASE_URL else DEVICE_BASE_URL

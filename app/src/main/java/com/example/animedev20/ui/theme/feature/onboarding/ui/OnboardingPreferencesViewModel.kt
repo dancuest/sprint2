@@ -3,11 +3,10 @@ package com.example.animedev20.ui.theme.feature.onboarding.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.animedev20.ui.theme.data.FakeDataSource
-import com.example.animedev20.ui.theme.data.repository.FakeUserRepositoryImpl
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.UserSettings
+import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +15,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class OnboardingPreferencesViewModel(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val animeRepository: AnimeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingPreferencesUiState())
@@ -33,13 +33,17 @@ class OnboardingPreferencesViewModel(
     private fun loadPreferences() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching { userRepository.getUserSettings() }
-                .onSuccess { settings ->
+            runCatching {
+                val settings = userRepository.getUserSettings()
+                val genres = animeRepository.getGenres()
+                settings to genres
+            }
+                .onSuccess { (settings, genres) ->
                     val shouldPrefill = settings.hasCompletedOnboarding
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            availableGenres = FakeDataSource.genres,
+                            availableGenres = genres,
                             selectedGenres = if (shouldPrefill) {
                                 settings.preferredGenres.map(Genre::id).toSet()
                             } else {
@@ -98,7 +102,7 @@ class OnboardingPreferencesViewModel(
         if (currentState.preferredDurations.isEmpty()) return
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
-            val selectedGenres = FakeDataSource.genres.filter { genre ->
+            val selectedGenres = currentState.availableGenres.filter { genre ->
                 currentState.selectedGenres.contains(genre.id)
             }
             val preferredDurations = DurationType.values().filter { duration ->
@@ -129,11 +133,14 @@ class OnboardingPreferencesViewModel(
     }
 
     companion object {
-        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun provideFactory(
+            userRepository: UserRepository,
+            animeRepository: AnimeRepository
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(OnboardingPreferencesViewModel::class.java)) {
-                    return OnboardingPreferencesViewModel(FakeUserRepositoryImpl) as T
+                    return OnboardingPreferencesViewModel(userRepository, animeRepository) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }
