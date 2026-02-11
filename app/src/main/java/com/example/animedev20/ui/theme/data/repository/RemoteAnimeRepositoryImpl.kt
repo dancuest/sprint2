@@ -55,7 +55,7 @@ class RemoteAnimeRepositoryImpl(
 
     override suspend fun getGenres(): List<Genre> {
         return safeCall(
-            call = { animeApi.getGenres().data },
+            call = { animeApi.getGenres(includeAdult = false).data },
             errorMessage = "No fue posible cargar la lista de géneros."
         )
     }
