@@ -59,7 +59,7 @@ fun AppNavHost(
                 navController.navigate(Screen.TriviaPlay.createRoute(animeId))
             })
         }
-        composable(Screen.Settings.route) { SettingsScreen() }
+        composable(Screen.Settings.route) { SettingsScreen(appContainer = appContainer) }
         composable(Screen.Profile.route) { ProfileScreen() }
         composable(
             route = Screen.AnimeDetail.route,

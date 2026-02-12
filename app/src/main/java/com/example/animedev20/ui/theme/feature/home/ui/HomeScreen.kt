@@ -270,6 +270,7 @@ private fun HomeSuccessPreview() {
             HomeSuccessContent(
                 homeContent = HomeContent(
                     heroAnime = FakeDataSource.heroAnime,
+                    preferredGenres = FakeDataSource.preferredGenres,
                     sections = FakeDataSource.buildSectionsForGenres(FakeDataSource.preferredGenres)
                 ),
                 onAnimeSelected = {}

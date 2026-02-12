@@ -3,11 +3,9 @@ package com.example.animedev20.ui.theme.feature.settings.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.animedev20.ui.theme.data.FakeDataSource
-import com.example.animedev20.ui.theme.data.repository.FakeUserRepositoryImpl
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.Genre
-import com.example.animedev20.ui.theme.domain.model.UserSettings
+import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +15,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val animeRepository: AnimeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -33,14 +32,13 @@ class SettingsViewModel(
             runCatching {
                 val settingsDeferred = async { userRepository.getUserSettings() }
                 val profileDeferred = async { userRepository.getUserProfile() }
-                val settings = settingsDeferred.await()
-                val profile = profileDeferred.await()
-                settings to profile
-            }.onSuccess { (settings, profile) ->
+                val genresDeferred = async { animeRepository.getGenres() }
+                Triple(settingsDeferred.await(), profileDeferred.await(), genresDeferred.await())
+            }.onSuccess { (settings, profile, genres) ->
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        availableGenres = FakeDataSource.genres,
+                        availableGenres = genres,
                         selectedGenres = settings.preferredGenres.map { genre -> genre.id }.toSet(),
                         preferredDurations = settings.preferredDurations.toSet(),
                         notificationsEnabled = settings.notificationsEnabled,
@@ -109,22 +107,13 @@ class SettingsViewModel(
     fun savePreferences() {
         viewModelScope.launch {
             val state = _uiState.value
-            val settings = UserSettings(
-                preferredGenres = FakeDataSource.genres.filter { genre ->
-                    state.selectedGenres.contains(genre.id)
-                },
-                preferredDurations = DurationType.values().filter { duration ->
-                    state.preferredDurations.contains(duration)
-                },
-                notificationsEnabled = state.notificationsEnabled,
-                culturalAlertsEnabled = state.culturalAlertsEnabled,
-                autoplayNextEpisode = state.autoplayNextEpisode,
-                hasCompletedOnboarding = state.hasCompletedOnboarding
-            )
-            runCatching { userRepository.updateUserSettings(settings) }
+            val selectedGenres = state.availableGenres.filter { genre ->
+                state.selectedGenres.contains(genre.id)
+            }
+            runCatching { userRepository.updatePreferredGenres(selectedGenres) }
                 .onSuccess {
                     _uiState.update { current ->
-                        current.copy(message = "Preferencias actualizadas")
+                        current.copy(message = "Géneros actualizados")
                     }
                 }
                 .onFailure { error ->
@@ -162,11 +151,14 @@ class SettingsViewModel(
     }
 
     companion object {
-        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun provideFactory(
+            userRepository: UserRepository,
+            animeRepository: AnimeRepository
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
-                    return SettingsViewModel(FakeUserRepositoryImpl) as T
+                    return SettingsViewModel(userRepository, animeRepository) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }
