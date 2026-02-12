@@ -20,7 +20,7 @@ class GetHomeContentUseCase(
 
             // 3) Carga SECUENCIAL por género seleccionado.
             //    Si una sección falla, NO tumba el Home: la dejamos vacía.
-            val sections = preferredGenres.map { genre ->
+            val sections = sectionGenres.map { genre ->
                 runCatching {
                     val animes = animeRepository.getAnimesByGenre(genre.id)
                     AnimeSection(genre = genre, animes = animes)
