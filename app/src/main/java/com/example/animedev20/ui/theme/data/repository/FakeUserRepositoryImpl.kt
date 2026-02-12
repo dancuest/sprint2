@@ -43,6 +43,13 @@ object FakeUserRepositoryImpl : UserRepository {
         return cachedSettings
     }
 
+    override suspend fun updatePreferredGenres(genres: List<Genre>): List<Genre> {
+        delay(400)
+        cachedSettings = cachedSettings.copy(preferredGenres = genres)
+        profileFlow.value = profileFlow.value.copy(favoriteGenres = genres)
+        return cachedSettings.preferredGenres
+    }
+
     override suspend fun updateAccountInfo(
         name: String,
         email: String,

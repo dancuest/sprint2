@@ -4,36 +4,47 @@ import com.example.animedev20.ui.theme.domain.model.AnimeSection
 import com.example.animedev20.ui.theme.domain.model.HomeContent
 import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
 
 class GetHomeContentUseCase(
     private val animeRepository: AnimeRepository,
     private val userRepository: UserRepository
 ) {
-    suspend operator fun invoke(): Result<HomeContent> = runCatching {
+    suspend operator fun invoke(): Result<HomeContent> = try {
         supervisorScope {
-            // 1) Primero el hero (una sola llamada)
-            val heroAnime = animeRepository.getHeroRecommendation()
+            // 1) Primero el hero y los géneros preferidos en paralelo
+            val heroDeferred = async { animeRepository.getHeroRecommendation() }
+            val genresDeferred = async { userRepository.getPreferredGenres() }
 
-            // 2) Limita la cantidad de géneros para no pegarte un tiro en el pie con Jikan
-            //    Si quieres, sube/baja este número.
-            val preferredGenres = userRepository.getPreferredGenres().take(5)
+            val heroAnime = heroDeferred.await()
+            val preferredGenres = genresDeferred.await()
 
-            // 3) Carga SECUENCIAL: evita ráfagas => evita rate-limit
-            //    Si una sección falla, NO tumba el Home: la dejamos vacía.
-            val sections = preferredGenres.map { genre ->
-                runCatching {
-                    val animes = animeRepository.getAnimesByGenre(genre.id)
-                    AnimeSection(genre = genre, animes = animes)
-                }.getOrElse {
-                    AnimeSection(genre = genre, animes = emptyList())
+            // 2) Carga CONCURRENTE por cada género seleccionado.
+            //    Esto permite que aparezcan todos los que el usuario haya elegido sin esperas excesivas.
+            val sectionTasks = preferredGenres.map { genre ->
+                async {
+                    try {
+                        val animes = animeRepository.getAnimesByGenre(genre.id)
+                        AnimeSection(genre = genre, animes = animes)
+                    } catch (e: Exception) {
+                        AnimeSection(genre = genre, animes = emptyList())
+                    }
                 }
             }
 
-            HomeContent(
-                heroAnime = heroAnime,
-                sections = sections
+            val sections = sectionTasks.awaitAll()
+
+            Result.success(
+                HomeContent(
+                    heroAnime = heroAnime,
+                    preferredGenres = preferredGenres,
+                    sections = sections
+                )
             )
         }
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 }

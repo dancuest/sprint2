@@ -24,7 +24,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -32,12 +31,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.animedev20.ui.theme.data.AppContainer
+import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
@@ -45,7 +49,13 @@ import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
+    appContainer: AppContainer = DefaultAppContainer(),
+    viewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.provideFactory(
+            userRepository = appContainer.userRepository,
+            animeRepository = appContainer.animeRepository
+        )
+    )
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -69,9 +79,6 @@ fun SettingsScreen(
                 state = uiState,
                 onGenreSelected = viewModel::onGenreSelected,
                 onDurationSelected = viewModel::onDurationSelected,
-                onToggleNotifications = viewModel::onNotificationsToggled,
-                onToggleCulturalAlerts = viewModel::onCulturalAlertsToggled,
-                onToggleAutoplay = viewModel::onAutoplayToggled,
                 onSavePreferences = viewModel::savePreferences,
                 onSaveAccountInfo = viewModel::saveAccountInfo,
                 onNameChange = viewModel::onNameChanged,
@@ -89,9 +96,6 @@ private fun SettingsContent(
     state: SettingsUiState,
     onGenreSelected: (String) -> Unit,
     onDurationSelected: (DurationType) -> Unit,
-    onToggleNotifications: (Boolean) -> Unit,
-    onToggleCulturalAlerts: (Boolean) -> Unit,
-    onToggleAutoplay: (Boolean) -> Unit,
     onSavePreferences: () -> Unit,
     onSaveAccountInfo: () -> Unit,
     onNameChange: (String) -> Unit,
@@ -99,6 +103,11 @@ private fun SettingsContent(
     onNicknameChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var genreQuery by rememberSaveable { mutableStateOf("") }
+    val filteredGenres = state.availableGenres.filter { genre ->
+        genre.name.contains(genreQuery, ignoreCase = true)
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -120,6 +129,15 @@ private fun SettingsContent(
         }
         item {
             SettingSectionTitle(title = "Categorías que te interesan")
+            OutlinedTextField(
+                value = genreQuery,
+                onValueChange = { genreQuery = it },
+                label = { Text("Buscar género") },
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -127,7 +145,7 @@ private fun SettingsContent(
                     .padding(horizontal = 16.dp)
                     .fillMaxWidth()
             ) {
-                state.availableGenres.forEach { genre ->
+                filteredGenres.forEach { genre ->
                     FilterChip(
                         selected = state.selectedGenres.contains(genre.id),
                         onClick = { onGenreSelected(genre.id) },
@@ -139,7 +157,7 @@ private fun SettingsContent(
                 }
             }
             Text(
-                text = "Podrás cambiar estas categorías en cualquier momento desde aquí.",
+                text = "Seleccionados: ${state.selectedGenres.size}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -162,29 +180,6 @@ private fun SettingsContent(
                         modifier = Modifier.weight(1f)
                     )
                 }
-            }
-        }
-        item {
-            SettingSectionTitle(title = "Alertas y reproducción")
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                SettingToggleRow(
-                    title = "Notificaciones generales",
-                    description = "Nuevos estrenos, eventos culturales y anuncios importantes.",
-                    checked = state.notificationsEnabled,
-                    onCheckedChange = onToggleNotifications
-                )
-                SettingToggleRow(
-                    title = "Notas culturales",
-                    description = "Recibe contexto histórico y gastronómico cuando agregues nuevos animes.",
-                    checked = state.culturalAlertsEnabled,
-                    onCheckedChange = onToggleCulturalAlerts
-                )
-                SettingToggleRow(
-                    title = "Reproducción automática",
-                    description = "Inicia el siguiente episodio apenas termine el actual.",
-                    checked = state.autoplayNextEpisode,
-                    onCheckedChange = onToggleAutoplay
-                )
             }
             Button(
                 onClick = onSavePreferences,
@@ -258,32 +253,6 @@ private fun SettingSectionTitle(title: String) {
 }
 
 @Composable
-private fun SettingToggleRow(
-    title: String,
-    description: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-@Composable
 private fun DurationPreferenceChip(
     label: String,
     description: String,
@@ -345,9 +314,6 @@ private fun SettingsContentPreview() {
             ),
             onGenreSelected = {},
             onDurationSelected = {},
-            onToggleNotifications = {},
-            onToggleCulturalAlerts = {},
-            onToggleAutoplay = {},
             onSavePreferences = {},
             onSaveAccountInfo = {},
             onNameChange = {},
