@@ -17,11 +17,12 @@ class GetHomeContentUseCase(
 
             // 2) Limita la cantidad de géneros para no pegarte un tiro en el pie con Jikan
             //    Si quieres, sube/baja este número.
-            val preferredGenres = userRepository.getPreferredGenres().take(5)
+            val preferredGenres = userRepository.getPreferredGenres()
+            val sectionGenres = preferredGenres.take(5)
 
             // 3) Carga SECUENCIAL: evita ráfagas => evita rate-limit
             //    Si una sección falla, NO tumba el Home: la dejamos vacía.
-            val sections = preferredGenres.map { genre ->
+            val sections = sectionGenres.map { genre ->
                 runCatching {
                     val animes = animeRepository.getAnimesByGenre(genre.id)
                     AnimeSection(genre = genre, animes = animes)
@@ -32,6 +33,7 @@ class GetHomeContentUseCase(
 
             HomeContent(
                 heroAnime = heroAnime,
+                preferredGenres = preferredGenres,
                 sections = sections
             )
         }

@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +20,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,6 +43,7 @@ import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.AnimeSection
+import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.HomeContent
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 
@@ -68,6 +73,7 @@ fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HomeSuccessContent(
     homeContent: HomeContent,
@@ -98,6 +104,9 @@ private fun HomeSuccessContent(
                 anime = homeContent.heroAnime,
                 onAnimeSelected = onAnimeSelected
             )
+        }
+        item {
+            PreferredGenresSection(preferredGenres = homeContent.preferredGenres)
         }
         items(sections, key = { it.genre.id }) { section ->
             AnimeSectionRow(
@@ -162,6 +171,41 @@ private fun HeroRecommendation(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PreferredGenresSection(
+    preferredGenres: List<Genre>,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 20.dp)
+    ) {
+        Text(
+            text = "Tus géneros (${preferredGenres.size})",
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            preferredGenres.forEach { genre ->
+                FilterChip(
+                    selected = true,
+                    onClick = {},
+                    enabled = false,
+                    label = { Text(genre.name) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 )
             }
         }
@@ -270,6 +314,7 @@ private fun HomeSuccessPreview() {
             HomeSuccessContent(
                 homeContent = HomeContent(
                     heroAnime = FakeDataSource.heroAnime,
+                    preferredGenres = FakeDataSource.preferredGenres,
                     sections = FakeDataSource.buildSectionsForGenres(FakeDataSource.preferredGenres)
                 ),
                 onAnimeSelected = {}
