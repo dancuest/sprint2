@@ -11,6 +11,5 @@ interface UserRepository {
     fun observeUserProfile(): Flow<UserProfile>
     suspend fun getUserSettings(): UserSettings
     suspend fun updateUserSettings(settings: UserSettings): UserSettings
-    suspend fun updatePreferredGenres(genres: List<Genre>): List<Genre>
     suspend fun updateAccountInfo(name: String, email: String, nickname: String): UserProfile
 }
