@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaSummary
@@ -41,7 +42,10 @@ import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 
 @Composable
 fun TriviaScreen(
-    viewModel: TriviaViewModel = viewModel(factory = TriviaViewModel.Factory),
+    appContainer: AppContainer,
+    viewModel: TriviaViewModel = viewModel(
+        factory = TriviaViewModel.provideFactory(appContainer.triviaRepository)
+    ),
     onPlayTrivia: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()

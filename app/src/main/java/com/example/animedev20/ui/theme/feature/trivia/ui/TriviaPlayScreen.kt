@@ -46,7 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.animedev20.ui.theme.data.AppContainer
-import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
@@ -60,12 +59,13 @@ fun TriviaPlayScreen(
     onBack: () -> Unit,
     onGoToHome: () -> Unit,
     onGoToTrivia: () -> Unit,
-    appContainer: AppContainer = DefaultAppContainer(),
+    appContainer: AppContainer,
     viewModel: TriviaPlayViewModel = viewModel(
         factory = TriviaPlayViewModel.provideFactory(
             animeId = animeId,
             animeRepository = appContainer.animeRepository,
-            triviaRepository = appContainer.triviaRepository
+            triviaRepository = appContainer.triviaRepository,
+            userRepository = appContainer.userRepository
         )
     )
 ) {
@@ -140,7 +140,7 @@ private fun TriviaPlayContent(
             onDifficultySelected = onDifficultySelected
         )
         when {
-            state.questions.isEmpty() -> TriviaInstructions()
+            state.questions.isEmpty() -> TriviaInstructions(state.difficulty)
             state.finished -> TriviaResultCard(
                 state = state,
                 onRestart = onRestart,
@@ -220,7 +220,7 @@ private fun DifficultySelector(
                         Column {
                             Text(text = difficulty.displayName)
                             Text(
-                                text = difficulty.description,
+                                text = "${difficulty.description} • ${difficulty.questionCount} preguntas",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -238,7 +238,7 @@ private fun DifficultySelector(
 }
 
 @Composable
-private fun TriviaInstructions() {
+private fun TriviaInstructions(selectedDifficulty: TriviaDifficulty? = null) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -251,8 +251,10 @@ private fun TriviaInstructions() {
                 text = "¿Listo para jugar?",
                 style = MaterialTheme.typography.titleMedium
             )
+            val hint = selectedDifficulty?.let { "Seleccionaste ${it.displayName}: ${it.questionCount} preguntas." }
+                ?: "Selecciona una dificultad para desbloquear una trivia cultural."
             Text(
-                text = "Selecciona una dificultad para desbloquear una trivia cultural con 3 preguntas.",
+                text = hint,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

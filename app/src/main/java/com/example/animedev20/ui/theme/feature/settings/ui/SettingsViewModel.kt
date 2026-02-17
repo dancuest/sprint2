@@ -48,6 +48,7 @@ class SettingsViewModel(
                         name = profile.name,
                         email = profile.email,
                         nickname = profile.nickname,
+                        profileImageUri = profile.avatarUrl,
                         message = null
                     )
                 }
@@ -92,6 +93,11 @@ class SettingsViewModel(
         _uiState.update { it.copy(autoplayNextEpisode = enabled) }
     }
 
+
+    fun onProfileImageChanged(uri: String) {
+        _uiState.update { it.copy(profileImageUri = uri) }
+    }
+
     fun onNameChanged(value: String) {
         _uiState.update { it.copy(name = value) }
     }
@@ -128,7 +134,8 @@ class SettingsViewModel(
         viewModelScope.launch {
             val state = _uiState.value
             runCatching {
-                userRepository.updateAccountInfo(state.name, state.email, state.nickname)
+                val updatedProfile = userRepository.updateAccountInfo(state.name, state.email, state.nickname)
+                userRepository.updateUserProfile(updatedProfile.copy(avatarUrl = state.profileImageUri))
             }.onSuccess { updatedProfile ->
                 _uiState.update { current ->
                     current.copy(
@@ -178,5 +185,6 @@ data class SettingsUiState(
     val name: String = "",
     val email: String = "",
     val nickname: String = "",
+    val profileImageUri: String = "",
     val message: String? = null
 )

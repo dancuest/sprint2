@@ -25,6 +25,17 @@ object FakeUserRepositoryImpl : UserRepository {
         return profileFlow.value
     }
 
+
+    override suspend fun updateUserProfile(profile: UserProfile): UserProfile {
+        delay(400)
+        profileFlow.value = profile
+        cachedSettings = cachedSettings.copy(
+            preferredGenres = profile.favoriteGenres,
+            preferredDurations = profile.preferredDurations
+        )
+        return profile
+    }
+
     override fun observeUserProfile(): Flow<UserProfile> = profileFlow.asStateFlow()
 
     override suspend fun getUserSettings(): UserSettings {

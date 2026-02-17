@@ -44,7 +44,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.animedev20.ui.theme.data.AppContainer
-import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
@@ -52,7 +51,7 @@ import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 @Composable
 fun OnboardingPreferencesRoute(
     onContinue: () -> Unit,
-    appContainer: AppContainer = DefaultAppContainer(),
+    appContainer: AppContainer,
     viewModel: OnboardingPreferencesViewModel = viewModel(
         factory = OnboardingPreferencesViewModel.provideFactory(
             userRepository = appContainer.userRepository,
