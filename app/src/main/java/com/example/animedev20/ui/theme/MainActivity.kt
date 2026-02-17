@@ -14,6 +14,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,7 +39,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
-    val appContainer = remember { DefaultAppContainer() }
+    val context = LocalContext.current
+    val appContainer = remember { DefaultAppContainer(context) }
     val startDestination by produceState<String?>(initialValue = null) {
         val destination = runCatching { appContainer.userRepository.getUserSettings() }
             .map { settings ->

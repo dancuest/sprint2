@@ -18,7 +18,7 @@ import kotlin.math.max
 
 object FakeTriviaRepositoryImpl : TriviaRepository {
 
-    private const val DEFAULT_QUESTION_COUNT = 3
+    private const val DEFAULT_QUESTION_COUNT = 4
 
     private data class TriviaStats(
         val lastScore: Int? = null,
@@ -211,24 +211,34 @@ object FakeTriviaRepositoryImpl : TriviaRepository {
         statsFlow.value = statsFlow.value + (animeId to updated)
     }
 
-    private fun buildQuestionSet(anime: Anime): Map<TriviaDifficulty, List<TriviaQuestion>> =
-        mapOf(
-            TriviaDifficulty.EASY to listOf(
-                buildDurationQuestion(anime),
-                buildStatusQuestion(anime),
-                buildCulturalFoodQuestion(anime)
-            ),
-            TriviaDifficulty.MEDIUM to listOf(
-                buildCulturalTraditionQuestion(anime),
-                buildReleaseYearQuestion(anime),
-                buildEpisodesQuestion(anime),
-            ),
-            TriviaDifficulty.HARD to listOf(
-                buildStatementQuestion(anime),
-                buildMissingGenreQuestion(anime),
-                buildBingeTimeQuestion(anime)
-            )
+    private fun buildQuestionSet(anime: Anime): Map<TriviaDifficulty, List<TriviaQuestion>> {
+        val pool = listOf(
+            buildDurationQuestion(anime),
+            buildStatusQuestion(anime),
+            buildCulturalFoodQuestion(anime),
+            buildCulturalTraditionQuestion(anime),
+            buildReleaseYearQuestion(anime),
+            buildEpisodesQuestion(anime),
+            buildStatementQuestion(anime),
+            buildMissingGenreQuestion(anime),
+            buildBingeTimeQuestion(anime)
         )
+        return mapOf(
+            TriviaDifficulty.EASY to toSizedQuestions(pool, TriviaDifficulty.EASY.questionCount),
+            TriviaDifficulty.MEDIUM to toSizedQuestions(pool, TriviaDifficulty.MEDIUM.questionCount),
+            TriviaDifficulty.HARD to toSizedQuestions(pool, TriviaDifficulty.HARD.questionCount)
+        )
+    }
+
+    private fun toSizedQuestions(pool: List<TriviaQuestion>, count: Int): List<TriviaQuestion> {
+        val expanded = generateSequence(pool) { it.shuffled() }
+            .flatten()
+            .take(count)
+            .toList()
+        return expanded.mapIndexed { index, question ->
+            question.copy(id = "${question.id}_$index")
+        }
+    }
 
     private fun buildDurationQuestion(anime: Anime): TriviaQuestion {
         val options = DurationType.entries.map { it.toReadableText() }

@@ -56,7 +56,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.animedev20.ui.theme.data.AppContainer
-import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.AnimeDetail
@@ -69,7 +68,7 @@ import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 @Composable
 fun AnimeDetailScreen(
     animeId: Long,
-    appContainer: AppContainer = DefaultAppContainer(),
+    appContainer: AppContainer,
     onBack: () -> Unit,
     onPlayRequested: (Long) -> Unit = {},
     onTriviaRequested: (Long) -> Unit = {}

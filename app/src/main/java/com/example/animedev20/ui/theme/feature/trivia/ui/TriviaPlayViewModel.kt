@@ -8,10 +8,12 @@ import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaQuestion
 import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.TriviaRepository
+import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import com.example.animedev20.ui.theme.domain.usecase.GetAnimeDetailUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 sealed interface TriviaPlayUiState {
@@ -37,7 +39,8 @@ data class TriviaPlayState(
 class TriviaPlayViewModel(
     private val animeId: Long,
     private val getAnimeDetailUseCase: GetAnimeDetailUseCase,
-    private val triviaRepository: TriviaRepository
+    private val triviaRepository: TriviaRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<TriviaPlayUiState>(TriviaPlayUiState.Loading)
@@ -132,6 +135,12 @@ class TriviaPlayViewModel(
                 score = state.score,
                 totalQuestions = state.totalQuestions
             )
+            runCatching {
+                val profile = userRepository.observeUserProfile().first()
+                userRepository.updateUserProfile(
+                    profile.copy(completedTrivias = profile.completedTrivias + 1)
+                )
+            }
         }
     }
 
@@ -159,7 +168,8 @@ class TriviaPlayViewModel(
         fun provideFactory(
             animeId: Long,
             animeRepository: AnimeRepository,
-            triviaRepository: TriviaRepository
+            triviaRepository: TriviaRepository,
+            userRepository: UserRepository
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
@@ -168,7 +178,8 @@ class TriviaPlayViewModel(
                     return TriviaPlayViewModel(
                         animeId = animeId,
                         getAnimeDetailUseCase = useCase,
-                        triviaRepository = triviaRepository
+                        triviaRepository = triviaRepository,
+                        userRepository = userRepository
                     ) as T
                 }
             }

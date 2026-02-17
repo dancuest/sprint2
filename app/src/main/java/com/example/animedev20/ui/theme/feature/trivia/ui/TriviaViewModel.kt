@@ -3,7 +3,6 @@ package com.example.animedev20.ui.theme.feature.trivia.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.animedev20.ui.theme.data.repository.FakeTriviaRepositoryImpl
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaSummary
 import com.example.animedev20.ui.theme.domain.repository.TriviaRepository
 import kotlinx.coroutines.Job
@@ -53,11 +52,11 @@ class TriviaViewModel(
     }
 
     companion object {
-        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun provideFactory(triviaRepository: TriviaRepository): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(TriviaViewModel::class.java)) {
-                    return TriviaViewModel(FakeTriviaRepositoryImpl) as T
+                    return TriviaViewModel(triviaRepository) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }

@@ -1,5 +1,7 @@
 package com.example.animedev20.ui.theme.feature.settings.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,7 +43,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.animedev20.ui.theme.data.AppContainer
-import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
@@ -49,7 +50,7 @@ import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    appContainer: AppContainer = DefaultAppContainer(),
+    appContainer: AppContainer,
     viewModel: SettingsViewModel = viewModel(
         factory = SettingsViewModel.provideFactory(
             userRepository = appContainer.userRepository,
@@ -84,6 +85,7 @@ fun SettingsScreen(
                 onNameChange = viewModel::onNameChanged,
                 onEmailChange = viewModel::onEmailChanged,
                 onNicknameChange = viewModel::onNicknameChanged,
+                onChangePhoto = viewModel::onProfileImageChanged,
                 modifier = Modifier.padding(padding)
             )
         }
@@ -101,11 +103,17 @@ private fun SettingsContent(
     onNameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onNicknameChange: (String) -> Unit,
+    onChangePhoto: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var genreQuery by rememberSaveable { mutableStateOf("") }
     val filteredGenres = state.availableGenres.filter { genre ->
         genre.name.contains(genreQuery, ignoreCase = true)
+    }
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.toString()?.let(onChangePhoto)
     }
 
     LazyColumn(
@@ -194,6 +202,13 @@ private fun SettingsContent(
             SettingSectionTitle(title = "Datos del perfil")
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { photoPickerLauncher.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cambiar foto")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = state.name,
                     onValueChange = onNameChange,
@@ -318,7 +333,8 @@ private fun SettingsContentPreview() {
             onSaveAccountInfo = {},
             onNameChange = {},
             onEmailChange = {},
-            onNicknameChange = {}
+            onNicknameChange = {},
+            onChangePhoto = {}
         )
     }
 }
