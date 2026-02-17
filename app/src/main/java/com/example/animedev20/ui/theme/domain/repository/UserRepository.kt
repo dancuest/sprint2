@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 interface UserRepository {
     suspend fun getPreferredGenres(): List<Genre>
     suspend fun getUserProfile(): UserProfile
+    suspend fun updateUserProfile(profile: UserProfile): UserProfile
     fun observeUserProfile(): Flow<UserProfile>
     suspend fun getUserSettings(): UserSettings
     suspend fun updateUserSettings(settings: UserSettings): UserSettings
