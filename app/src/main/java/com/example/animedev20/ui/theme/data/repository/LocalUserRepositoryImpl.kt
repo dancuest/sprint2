@@ -33,6 +33,7 @@ class LocalUserRepositoryImpl(
             prefs[UserPrefsKeys.LEVEL] = profile.knowledgeLevel
             prefs[UserPrefsKeys.COMPLETED_TRIVIAS] = profile.completedTrivias
             prefs[UserPrefsKeys.PREFERRED_GENRES] = serializeGenres(profile.favoriteGenres)
+            prefs[UserPrefsKeys.PREFERRED_GENRES] = profile.favoriteGenres.joinToString(",") { it.id }
             prefs[UserPrefsKeys.ACCOUNT_NAME] = profile.name
             prefs[UserPrefsKeys.ACCOUNT_EMAIL] = profile.email
             prefs[UserPrefsKeys.ACCOUNT_NICKNAME] = profile.nickname
@@ -44,6 +45,12 @@ class LocalUserRepositoryImpl(
         val default = FakeDataSource.defaultUserProfile
         val favoriteGenres = deserializeGenres(prefs[UserPrefsKeys.PREFERRED_GENRES])
             .ifEmpty { default.favoriteGenres }
+        val genresRaw = prefs[UserPrefsKeys.PREFERRED_GENRES]
+        val favoriteGenres = genresRaw
+            ?.split(',')
+            ?.mapNotNull { id -> FakeDataSource.genres.firstOrNull { it.id == id } }
+            ?.takeIf { it.isNotEmpty() }
+            ?: default.favoriteGenres
 
         default.copy(
             name = prefs[UserPrefsKeys.ACCOUNT_NAME] ?: default.name,
@@ -65,6 +72,17 @@ class LocalUserRepositoryImpl(
             .ifEmpty { default.preferredGenres }
 
         default.copy(
+    override suspend fun getUserSettings(): UserSettings {
+        val prefs = dataStore.data.first()
+        val default = FakeDataSource.defaultUserSettings
+        val genresRaw = prefs[UserPrefsKeys.PREFERRED_GENRES]
+        val preferredGenres = genresRaw
+            ?.split(',')
+            ?.mapNotNull { id -> FakeDataSource.genres.firstOrNull { it.id == id } }
+            ?.takeIf { it.isNotEmpty() }
+            ?: default.preferredGenres
+
+        return default.copy(
             preferredGenres = preferredGenres,
             notificationsEnabled = prefs[UserPrefsKeys.NOTIFICATIONS] ?: default.notificationsEnabled,
             culturalAlertsEnabled = prefs[UserPrefsKeys.CULTURAL_ALERTS] ?: default.culturalAlertsEnabled,
@@ -75,6 +93,7 @@ class LocalUserRepositoryImpl(
     override suspend fun updateUserSettings(settings: UserSettings): UserSettings {
         dataStore.edit { prefs ->
             prefs[UserPrefsKeys.PREFERRED_GENRES] = serializeGenres(settings.preferredGenres)
+            prefs[UserPrefsKeys.PREFERRED_GENRES] = settings.preferredGenres.joinToString(",") { it.id }
             prefs[UserPrefsKeys.NOTIFICATIONS] = settings.notificationsEnabled
             prefs[UserPrefsKeys.CULTURAL_ALERTS] = settings.culturalAlertsEnabled
             prefs[UserPrefsKeys.AUTOPLAY] = settings.autoplayNextEpisode
@@ -86,6 +105,7 @@ class LocalUserRepositoryImpl(
     override suspend fun updatePreferredGenres(genres: List<Genre>): List<Genre> {
         dataStore.edit { prefs ->
             prefs[UserPrefsKeys.PREFERRED_GENRES] = serializeGenres(genres)
+            prefs[UserPrefsKeys.PREFERRED_GENRES] = genres.joinToString(",") { it.id }
         }
         return getPreferredGenres()
     }
