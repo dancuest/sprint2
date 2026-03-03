@@ -1,5 +1,6 @@
 package com.example.animedev20.ui.theme.data
 
+import android.content.Context
 import com.example.animedev20.ui.theme.data.remote.AnimeApiFactory
 import com.example.animedev20.ui.theme.data.remote.ApiConfig
 import com.example.animedev20.ui.theme.data.repository.FakeAnimeRepositoryImpl
@@ -22,6 +23,7 @@ interface AppContainer {
 }
 
 class DefaultAppContainer(
+    private val context: Context? = null,
     baseUrl: String = ApiConfig.baseUrl,
     useRemote: Boolean = USE_REMOTE
 ) : AppContainer {
@@ -35,5 +37,7 @@ class DefaultAppContainer(
 
     override val favoritesRepository: FavoritesRepository = FakeFavoritesRepositoryImpl
     override val triviaRepository: TriviaRepository = FakeTriviaRepositoryImpl
-    override val userRepository: UserRepository = FakeUserRepositoryImpl
+    override val userRepository: UserRepository = FakeUserRepositoryImpl.apply {
+        context?.let(::initialize)
+    }
 }
