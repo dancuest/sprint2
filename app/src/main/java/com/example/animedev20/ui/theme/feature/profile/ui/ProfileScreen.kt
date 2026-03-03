@@ -186,8 +186,13 @@ private fun ProfileHeader(profile: UserProfile) {
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = profile.nickname,
+                text = profile.name,
                 style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+            Text(
+                text = "@${profile.nickname}",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimary
             )
             Text(
