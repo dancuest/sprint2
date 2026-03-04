@@ -5,7 +5,7 @@ import com.example.animedev20.ui.theme.data.remote.AnimeApiFactory
 import com.example.animedev20.ui.theme.data.remote.ApiConfig
 import com.example.animedev20.ui.theme.data.repository.FakeAnimeRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FakeFavoritesRepositoryImpl
-import com.example.animedev20.ui.theme.data.repository.FakeTriviaRepositoryImpl
+import com.example.animedev20.ui.theme.data.repository.FavoritesTriviaRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FakeUserRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.RemoteAnimeRepositoryImpl
 import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
@@ -36,7 +36,10 @@ class DefaultAppContainer(
     }
 
     override val favoritesRepository: FavoritesRepository = FakeFavoritesRepositoryImpl
-    override val triviaRepository: TriviaRepository = FakeTriviaRepositoryImpl
+    override val triviaRepository: TriviaRepository = FavoritesTriviaRepositoryImpl(
+        favoritesRepository = favoritesRepository,
+        animeRepository = animeRepository
+    )
     override val userRepository: UserRepository = FakeUserRepositoryImpl.apply {
         context?.let(::initialize)
     }
