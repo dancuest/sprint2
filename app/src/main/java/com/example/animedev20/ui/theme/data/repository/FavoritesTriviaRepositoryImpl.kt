@@ -1,5 +1,7 @@
 package com.example.animedev20.ui.theme.data.repository
 
+import android.content.Context
+import androidx.core.content.edit
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.DurationType
@@ -20,11 +22,14 @@ import kotlin.math.max
 
 class FavoritesTriviaRepositoryImpl(
     private val favoritesRepository: FavoritesRepository,
-    private val animeRepository: AnimeRepository
+    private val animeRepository: AnimeRepository,
+    private val context: Context? = null
 ) : TriviaRepository {
 
     private companion object {
         const val DEFAULT_QUESTION_COUNT = 3
+        const val PREFS_NAME = "animedev_trivia_prefs"
+        const val KEY_STATS = "trivia_stats"
     }
 
     private data class TriviaStats(
@@ -51,6 +56,10 @@ class FavoritesTriviaRepositoryImpl(
 
     private val statsFlow = MutableStateFlow<Map<Int, TriviaStats>>(emptyMap())
     private var latestFavorites: List<Anime> = emptyList()
+
+    init {
+        restoreStats()
+    }
 
     private val foodTypeOptions = listOf("Comida de mar", "Dulces", "Comida salada", "Bebidas")
 
@@ -163,6 +172,51 @@ class FavoritesTriviaRepositoryImpl(
                 lastDifficulty = difficulty,
                 bestScore = max(previous?.bestScore ?: 0, score)
             ))
+        }
+        persistStats()
+    }
+
+    private fun restoreStats() {
+        val appContext = context?.applicationContext ?: return
+        val rawStats = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getStringSet(KEY_STATS, emptySet())
+            .orEmpty()
+
+        val restored = rawStats.mapNotNull { encoded ->
+            val parts = encoded.split("|")
+            if (parts.size != 6) return@mapNotNull null
+            val animeId = parts[0].toIntOrNull() ?: return@mapNotNull null
+            val timesPlayed = parts[1].toIntOrNull() ?: 0
+            val lastScore = parts[2].toIntOrNull()
+            val totalQuestions = parts[3].toIntOrNull() ?: DEFAULT_QUESTION_COUNT
+            val lastDifficulty = parts[4].takeIf { it.isNotBlank() }?.let { TriviaDifficulty.valueOf(it) }
+            val bestScore = parts[5].toIntOrNull() ?: 0
+            animeId to TriviaStats(
+                timesPlayed = timesPlayed,
+                lastScore = lastScore,
+                totalQuestions = totalQuestions,
+                lastDifficulty = lastDifficulty,
+                bestScore = bestScore
+            )
+        }.toMap()
+
+        statsFlow.value = restored
+    }
+
+    private fun persistStats() {
+        val appContext = context?.applicationContext ?: return
+        val encoded = statsFlow.value.map { (animeId, stats) ->
+            listOf(
+                animeId.toString(),
+                stats.timesPlayed.toString(),
+                stats.lastScore?.toString().orEmpty(),
+                stats.totalQuestions.toString(),
+                stats.lastDifficulty?.name.orEmpty(),
+                stats.bestScore.toString()
+            ).joinToString("|")
+        }.toSet()
+        appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
+            putStringSet(KEY_STATS, encoded)
         }
     }
 

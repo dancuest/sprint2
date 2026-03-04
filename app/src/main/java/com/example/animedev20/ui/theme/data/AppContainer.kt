@@ -35,10 +35,13 @@ class DefaultAppContainer(
         FakeAnimeRepositoryImpl()
     }
 
-    override val favoritesRepository: FavoritesRepository = FakeFavoritesRepositoryImpl
+    override val favoritesRepository: FavoritesRepository = FakeFavoritesRepositoryImpl.apply {
+        context?.let(::initialize)
+    }
     override val triviaRepository: TriviaRepository = FavoritesTriviaRepositoryImpl(
         favoritesRepository = favoritesRepository,
-        animeRepository = animeRepository
+        animeRepository = animeRepository,
+        context = context
     )
     override val userRepository: UserRepository = FakeUserRepositoryImpl.apply {
         context?.let(::initialize)
