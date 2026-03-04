@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.animedev20.ui.theme.data.FakeDataSource
-import com.example.animedev20.ui.theme.data.repository.FakeUserRepositoryImpl
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,11 +56,13 @@ class ProfileViewModel(
     }
 
     companion object {
-        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun provideFactory(
+            userRepository: UserRepository
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(ProfileViewModel::class.java)) {
-                    return ProfileViewModel(FakeUserRepositoryImpl) as T
+                    return ProfileViewModel(userRepository) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }

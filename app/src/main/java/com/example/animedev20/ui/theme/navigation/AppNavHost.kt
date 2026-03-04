@@ -50,17 +50,23 @@ fun AppNavHost(
             )
         }
         composable(Screen.Favorites.route) {
-            FavoritesScreen(onAnimeSelected = { animeId ->
-                navController.navigate(Screen.AnimeDetail.createRoute(animeId))
-            })
+            FavoritesScreen(
+                appContainer = appContainer,
+                onAnimeSelected = { animeId ->
+                    navController.navigate(Screen.AnimeDetail.createRoute(animeId))
+                }
+            )
         }
         composable(Screen.Trivia.route) {
-            TriviaScreen(onPlayTrivia = { animeId ->
-                navController.navigate(Screen.TriviaPlay.createRoute(animeId))
-            })
+            TriviaScreen(
+                appContainer = appContainer,
+                onPlayTrivia = { animeId ->
+                    navController.navigate(Screen.TriviaPlay.createRoute(animeId))
+                }
+            )
         }
         composable(Screen.Settings.route) { SettingsScreen(appContainer = appContainer) }
-        composable(Screen.Profile.route) { ProfileScreen() }
+        composable(Screen.Profile.route) { ProfileScreen(appContainer = appContainer) }
         composable(
             route = Screen.AnimeDetail.route,
             arguments = listOf(navArgument("animeId") { type = NavType.LongType })
