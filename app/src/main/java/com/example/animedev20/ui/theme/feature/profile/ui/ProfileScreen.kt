@@ -45,6 +45,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.animedev20.ui.theme.data.AppContainer
+import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.DurationType
@@ -53,7 +55,10 @@ import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 
 @Composable
 fun ProfileScreen(
-    viewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory)
+    appContainer: AppContainer = DefaultAppContainer(),
+    viewModel: ProfileViewModel = viewModel(
+        factory = ProfileViewModel.provideFactory(appContainer.userRepository)
+    )
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val profile = uiState.profile
