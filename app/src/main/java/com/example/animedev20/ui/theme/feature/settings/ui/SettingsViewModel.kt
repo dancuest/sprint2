@@ -110,15 +110,26 @@ class SettingsViewModel(
             val selectedGenres = state.availableGenres.filter { genre ->
                 state.selectedGenres.contains(genre.id)
             }
-            runCatching { userRepository.updatePreferredGenres(selectedGenres) }
+            runCatching {
+                val currentSettings = userRepository.getUserSettings()
+                val updatedSettings = currentSettings.copy(
+                    preferredGenres = selectedGenres,
+                    preferredDurations = state.preferredDurations.toList(),
+                    notificationsEnabled = state.notificationsEnabled,
+                    culturalAlertsEnabled = state.culturalAlertsEnabled,
+                    autoplayNextEpisode = state.autoplayNextEpisode,
+                    hasCompletedOnboarding = currentSettings.hasCompletedOnboarding
+                )
+                userRepository.updateUserSettings(updatedSettings)
+            }
                 .onSuccess {
                     _uiState.update { current ->
-                        current.copy(message = "Géneros actualizados")
+                        current.copy(message = "Preferencias actualizadas")
                     }
                 }
                 .onFailure { error ->
                     _uiState.update { current ->
-                        current.copy(message = error.message ?: "No pudimos guardar tus cambios")
+                        current.copy(message = error.message)
                     }
                 }
         }
