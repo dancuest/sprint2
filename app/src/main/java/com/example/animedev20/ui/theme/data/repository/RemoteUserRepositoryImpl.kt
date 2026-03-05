@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.withTimeoutOrNull
 
 class RemoteUserRepositoryImpl(
     private val authApi: AuthApi,
@@ -37,7 +38,7 @@ class RemoteUserRepositoryImpl(
     }
 
     override suspend fun getUserProfile(): UserProfile {
-        refreshProfile()
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) { refreshProfile() }
         return profileFlow.value
     }
 
@@ -48,7 +49,7 @@ class RemoteUserRepositoryImpl(
     }
 
     override suspend fun getUserSettings(): UserSettings {
-        refreshSettings()
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) { refreshSettings() }
         return settingsFlow.value
     }
 
@@ -151,14 +152,12 @@ class RemoteUserRepositoryImpl(
             .onFailure { Log.e(TAG, "Error cargando catálogo de géneros", it) }
             .getOrDefault(emptyList())
 
-        val selectedGenreIds = preferredGenres.orEmpty().toSet()
+        val selectedGenreIds = parseGenreIds(preferredGenres)
         val mappedGenres = availableGenres.filter { genre ->
             genre.id.toIntOrNull() in selectedGenreIds
         }
 
-        val mappedDurations = preferredDurations.orEmpty().mapNotNull { durationName ->
-            DurationType.values().firstOrNull { it.name == durationName }
-        }
+        val mappedDurations = parseDurations(preferredDurations)
 
         return settingsFlow.value.copy(
             preferredGenres = mappedGenres,
@@ -174,6 +173,34 @@ class RemoteUserRepositoryImpl(
         )
     }
 
+
+    private fun parseGenreIds(raw: Any?): Set<Int> {
+        return when (raw) {
+            is Number -> setOf(raw.toInt())
+            is String -> raw.toIntOrNull()?.let(::setOf).orEmpty()
+            is List<*> -> raw.mapNotNull {
+                when (it) {
+                    is Number -> it.toInt()
+                    is String -> it.toIntOrNull()
+                    else -> null
+                }
+            }.toSet()
+            else -> emptySet()
+        }
+    }
+
+    private fun parseDurations(raw: Any?): List<DurationType> {
+        val values = when (raw) {
+            is String -> listOf(raw)
+            is List<*> -> raw.mapNotNull { it?.toString() }
+            else -> emptyList()
+        }
+
+        return values.mapNotNull { durationName ->
+            DurationType.values().firstOrNull { it.name == durationName }
+        }
+    }
+
     private fun UserSettings.toToggleMap(): Map<String, Boolean> {
         return mapOf(
             "notificationsEnabled" to notificationsEnabled,
@@ -185,5 +212,6 @@ class RemoteUserRepositoryImpl(
 
     companion object {
         private const val TAG = "RemoteUserRepository"
+        private const val NETWORK_TIMEOUT_MS = 2_500L
     }
 }
