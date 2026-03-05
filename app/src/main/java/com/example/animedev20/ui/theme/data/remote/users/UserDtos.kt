@@ -10,8 +10,8 @@ data class UserDto(
 
 data class UserSettingsDto(
     val userId: String,
-    val preferredGenres: Any? = null,
-    val preferredDurations: Any? = null,
+    val preferredGenres: List<Int>? = null,
+    val preferredDurations: List<String>? = null,
     val toggles: Map<String, Boolean>? = null,
     val ageRange: String? = null,
     val genderCode: String? = null,
