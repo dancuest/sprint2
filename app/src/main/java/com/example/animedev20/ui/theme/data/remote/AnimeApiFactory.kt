@@ -6,7 +6,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object AnimeApiFactory {
-    fun create(baseUrl: String): AnimeApi {
+    fun createRetrofit(baseUrl: String): Retrofit {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
@@ -22,6 +22,9 @@ object AnimeApiFactory {
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-            .create(AnimeApi::class.java)
+    }
+
+    fun create(baseUrl: String): AnimeApi {
+        return createRetrofit(baseUrl).create(AnimeApi::class.java)
     }
 }

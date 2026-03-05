@@ -12,6 +12,8 @@ import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.FavoritesRepository
 import com.example.animedev20.ui.theme.domain.repository.TriviaRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
+import com.example.animedev20.ui.theme.data.remote.AuthApi
+import com.example.animedev20.ui.theme.data.repository.RemoteUserRepositoryImpl
 
 const val USE_REMOTE = true
 
@@ -27,7 +29,9 @@ class DefaultAppContainer(
     baseUrl: String = ApiConfig.baseUrl,
     useRemote: Boolean = USE_REMOTE
 ) : AppContainer {
-    private val animeApi = AnimeApiFactory.create(baseUrl)
+    private val retrofit = com.example.animedev20.ui.theme.data.remote.AnimeApiFactory.createRetrofit(baseUrl)
+    private val animeApi = retrofit.create(com.example.animedev20.ui.theme.data.remote.AnimeApi::class.java)
+    private val authApi = retrofit.create(AuthApi::class.java)
 
     override val animeRepository: AnimeRepository = if (useRemote) {
         RemoteAnimeRepositoryImpl(animeApi)
@@ -43,7 +47,13 @@ class DefaultAppContainer(
         animeRepository = animeRepository,
         context = context
     )
-    override val userRepository: UserRepository = FakeUserRepositoryImpl.apply {
-        context?.let(::initialize)
+    override val userRepository: UserRepository = if (useRemote) {
+        RemoteUserRepositoryImpl(authApi).apply {
+            context?.let(::initialize)
+        }
+    } else {
+        FakeUserRepositoryImpl.apply {
+            context?.let(::initialize)
+        }
     }
 }
