@@ -20,6 +20,9 @@ data class UserProfile(
 )
 
 data class UserSettings(
+    val ageRange: Int = 0,
+    val genderCode: Int = 0,
+    val regionCode: Int = 0,
     val preferredGenres: List<Genre>,
     val preferredDurations: List<DurationType>,
     val notificationsEnabled: Boolean,

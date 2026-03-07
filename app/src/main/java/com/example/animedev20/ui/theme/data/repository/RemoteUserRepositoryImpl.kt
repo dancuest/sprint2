@@ -123,6 +123,9 @@ class RemoteUserRepositoryImpl(
     private suspend fun UserSettingsDto.toDomain(current: UserSettings): UserSettings {
         val resolvedGenres = resolvePreferredGenres(this)
         return current.copy(
+            ageRange = ageRange ?: current.ageRange,
+            genderCode = genderCode ?: current.genderCode,
+            regionCode = regionCode ?: current.regionCode,
             preferredGenres = resolvedGenres.ifEmpty { current.preferredGenres },
             preferredDurations = preferredDurations.mapNotNull { it.toDurationTypeOrNull() }
                 .ifEmpty { current.preferredDurations },
@@ -159,6 +162,9 @@ class RemoteUserRepositoryImpl(
 
     private fun UserSettings.toRequest(): UpdateSettingsRequest {
         return UpdateSettingsRequest(
+            ageRange = ageRange,
+            genderCode = genderCode,
+            regionCode = regionCode,
             preferredGenres = preferredGenres.mapNotNull { it.id.toIntOrNull() },
             preferredDurations = preferredDurations.map { it.name },
             toggles = mapOf(

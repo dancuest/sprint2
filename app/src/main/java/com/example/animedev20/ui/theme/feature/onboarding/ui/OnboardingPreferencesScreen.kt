@@ -46,7 +46,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
+import com.example.animedev20.ui.theme.domain.model.CodedOption
 import com.example.animedev20.ui.theme.domain.model.DurationType
+import com.example.animedev20.ui.theme.domain.model.UserDemographicCatalog
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 
 @Composable
@@ -72,6 +74,9 @@ fun OnboardingPreferencesRoute(
         state = uiState,
         onGenreSelected = viewModel::onGenreSelected,
         onDurationSelected = viewModel::onDurationSelected,
+        onAgeRangeSelected = viewModel::onAgeRangeSelected,
+        onGenderSelected = viewModel::onGenderSelected,
+        onRegionSelected = viewModel::onRegionSelected,
         onContinue = viewModel::onContinue,
         onRetry = viewModel::retryLoading
     )
@@ -83,6 +88,9 @@ fun OnboardingPreferencesScreen(
     state: OnboardingPreferencesUiState,
     onGenreSelected: (String) -> Unit,
     onDurationSelected: (DurationType) -> Unit,
+    onAgeRangeSelected: (Int) -> Unit,
+    onGenderSelected: (Int) -> Unit,
+    onRegionSelected: (Int) -> Unit,
     onContinue: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
@@ -169,6 +177,33 @@ fun OnboardingPreferencesScreen(
                                 )
                             }
                         }
+                    }
+                    item {
+                        Text(
+                            text = "Cuéntanos un poco más (opcional)",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        DemographicSelector(
+                            title = "Rango de edad",
+                            options = UserDemographicCatalog.ageRanges,
+                            selectedCode = state.ageRange,
+                            onSelected = onAgeRangeSelected
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        DemographicSelector(
+                            title = "Sexo / género",
+                            options = UserDemographicCatalog.genders,
+                            selectedCode = state.genderCode,
+                            onSelected = onGenderSelected
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        DemographicSelector(
+                            title = "Región",
+                            options = UserDemographicCatalog.regions,
+                            selectedCode = state.regionCode,
+                            onSelected = onRegionSelected
+                        )
                     }
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -266,6 +301,36 @@ private fun DurationPreferenceCard(
     }
 }
 
+
+@Composable
+private fun DemographicSelector(
+    title: String,
+    options: List<CodedOption>,
+    selectedCode: Int,
+    onSelected: (Int) -> Unit
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Spacer(modifier = Modifier.height(6.dp))
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { option ->
+            FilterChip(
+                selected = selectedCode == option.code,
+                onClick = { onSelected(option.code) },
+                label = { Text(option.label) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            )
+        }
+    }
+}
+
 @Composable
 private fun LinearSavingIndicator() {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -329,6 +394,9 @@ private fun OnboardingPreferencesPreview() {
             ),
             onGenreSelected = {},
             onDurationSelected = {},
+            onAgeRangeSelected = {},
+            onGenderSelected = {},
+            onRegionSelected = {},
             onContinue = {},
             onRetry = {}
         )

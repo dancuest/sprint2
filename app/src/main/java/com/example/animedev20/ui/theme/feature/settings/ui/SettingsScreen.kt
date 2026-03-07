@@ -43,7 +43,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
+import com.example.animedev20.ui.theme.domain.model.CodedOption
 import com.example.animedev20.ui.theme.domain.model.DurationType
+import com.example.animedev20.ui.theme.domain.model.UserDemographicCatalog
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,6 +81,9 @@ fun SettingsScreen(
                 state = uiState,
                 onGenreSelected = viewModel::onGenreSelected,
                 onDurationSelected = viewModel::onDurationSelected,
+                onAgeRangeSelected = viewModel::onAgeRangeSelected,
+                onGenderSelected = viewModel::onGenderSelected,
+                onRegionSelected = viewModel::onRegionSelected,
                 onSavePreferences = viewModel::savePreferences,
                 onSaveAccountInfo = viewModel::saveAccountInfo,
                 onNameChange = viewModel::onNameChanged,
@@ -96,6 +101,9 @@ private fun SettingsContent(
     state: SettingsUiState,
     onGenreSelected: (String) -> Unit,
     onDurationSelected: (DurationType) -> Unit,
+    onAgeRangeSelected: (Int) -> Unit,
+    onGenderSelected: (Int) -> Unit,
+    onRegionSelected: (Int) -> Unit,
     onSavePreferences: () -> Unit,
     onSaveAccountInfo: () -> Unit,
     onNameChange: (String) -> Unit,
@@ -163,6 +171,33 @@ private fun SettingsContent(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }
+
+        item {
+            SettingSectionTitle(title = "Datos demográficos (opcional)")
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DemographicSelector(
+                    title = "Rango de edad",
+                    options = UserDemographicCatalog.ageRanges,
+                    selectedCode = state.ageRange,
+                    onSelected = onAgeRangeSelected
+                )
+                DemographicSelector(
+                    title = "Sexo / género",
+                    options = UserDemographicCatalog.genders,
+                    selectedCode = state.genderCode,
+                    onSelected = onGenderSelected
+                )
+                DemographicSelector(
+                    title = "Región",
+                    options = UserDemographicCatalog.regions,
+                    selectedCode = state.regionCode,
+                    onSelected = onRegionSelected
+                )
+            }
+        }
         item {
             SettingSectionTitle(title = "Duraciones preferidas de las series")
             Row(
@@ -223,6 +258,37 @@ private fun SettingsContent(
                     Text("Actualizar datos de perfil")
                 }
             }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DemographicSelector(
+    title: String,
+    options: List<CodedOption>,
+    selectedCode: Int,
+    onSelected: (Int) -> Unit
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Spacer(modifier = Modifier.height(6.dp))
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { option ->
+            FilterChip(
+                selected = selectedCode == option.code,
+                onClick = { onSelected(option.code) },
+                label = { Text(option.label) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            )
         }
     }
 }
@@ -314,6 +380,9 @@ private fun SettingsContentPreview() {
             ),
             onGenreSelected = {},
             onDurationSelected = {},
+            onAgeRangeSelected = {},
+            onGenderSelected = {},
+            onRegionSelected = {},
             onSavePreferences = {},
             onSaveAccountInfo = {},
             onNameChange = {},

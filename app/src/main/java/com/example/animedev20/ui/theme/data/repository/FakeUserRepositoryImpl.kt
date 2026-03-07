@@ -22,6 +22,9 @@ object FakeUserRepositoryImpl : UserRepository {
     private const val KEY_CULTURAL_ALERTS = "settings_cultural_alerts"
     private const val KEY_AUTOPLAY = "settings_autoplay"
     private const val KEY_ONBOARDING_COMPLETED = "settings_onboarding_completed"
+    private const val KEY_AGE_RANGE = "settings_age_range"
+    private const val KEY_GENDER_CODE = "settings_gender_code"
+    private const val KEY_REGION_CODE = "settings_region_code"
     private const val KEY_PROFILE_NAME = "profile_name"
     private const val KEY_PROFILE_EMAIL = "profile_email"
     private const val KEY_PROFILE_NICKNAME = "profile_nickname"
@@ -49,6 +52,9 @@ object FakeUserRepositoryImpl : UserRepository {
             ?: defaultSettings.preferredDurations
 
         cachedSettings = defaultSettings.copy(
+            ageRange = prefs.getInt(KEY_AGE_RANGE, defaultSettings.ageRange),
+            genderCode = prefs.getInt(KEY_GENDER_CODE, defaultSettings.genderCode),
+            regionCode = prefs.getInt(KEY_REGION_CODE, defaultSettings.regionCode),
             preferredGenres = restoredGenres,
             preferredDurations = restoredDurations,
             notificationsEnabled = prefs.getBoolean(KEY_NOTIFICATIONS, defaultSettings.notificationsEnabled),
@@ -127,6 +133,9 @@ object FakeUserRepositoryImpl : UserRepository {
         val context = appContext ?: return
         val profile = profileFlow.value
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
+            putInt(KEY_AGE_RANGE, cachedSettings.ageRange)
+            putInt(KEY_GENDER_CODE, cachedSettings.genderCode)
+            putInt(KEY_REGION_CODE, cachedSettings.regionCode)
             putStringSet(KEY_GENRES, cachedSettings.preferredGenres.map { encodeGenre(it) }.toSet())
             putStringSet(KEY_DURATIONS, cachedSettings.preferredDurations.map { it.name }.toSet())
             putBoolean(KEY_NOTIFICATIONS, cachedSettings.notificationsEnabled)
