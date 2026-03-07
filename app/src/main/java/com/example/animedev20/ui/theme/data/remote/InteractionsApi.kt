@@ -4,8 +4,8 @@ import retrofit2.http.Body
 import retrofit2.http.POST
 
 data class InteractionRequest(
-    val interactionType: String,
-    val animeId: Long? = null,
+    val type: String,
+    val animeId: Long,
     val payload: Map<String, Any>? = null
 )
 

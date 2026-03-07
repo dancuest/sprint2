@@ -18,7 +18,7 @@ class RemoteInteractionRepositoryImpl(
     override fun trackView(animeId: Long) {
         postAsync(
             InteractionRequest(
-                interactionType = "VIEW",
+                type = "VIEW",
                 animeId = animeId
             )
         )
@@ -27,7 +27,7 @@ class RemoteInteractionRepositoryImpl(
     override fun trackFavorite(animeId: Long) {
         postAsync(
             InteractionRequest(
-                interactionType = "FAVORITE",
+                type = "FAVORITE",
                 animeId = animeId
             )
         )
@@ -36,7 +36,7 @@ class RemoteInteractionRepositoryImpl(
     override fun trackUnfavorite(animeId: Long) {
         postAsync(
             InteractionRequest(
-                interactionType = "UNFAVORITE",
+                type = "UNFAVORITE",
                 animeId = animeId
             )
         )
@@ -45,7 +45,7 @@ class RemoteInteractionRepositoryImpl(
     override fun trackTriviaScore(animeId: Long, score: Int, totalQuestions: Int) {
         postAsync(
             InteractionRequest(
-                interactionType = "TRIVIA_SCORE",
+                type = "TRIVIA_SCORE",
                 animeId = animeId,
                 payload = mapOf(
                     "score" to score,
@@ -59,7 +59,7 @@ class RemoteInteractionRepositoryImpl(
         scope.launch {
             runCatching { interactionsApi.postInteraction(request) }
                 .onFailure { error ->
-                    Log.w("Interactions", "Unable to post interaction ${request.interactionType}", error)
+                    Log.w("Interactions", "Unable to post interaction ${request.type}", error)
                 }
         }
     }

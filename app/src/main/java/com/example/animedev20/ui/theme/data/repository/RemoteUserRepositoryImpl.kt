@@ -1,7 +1,7 @@
 package com.example.animedev20.ui.theme.data.repository
 
 import android.content.Context
-import com.example.animedev20.ui.theme.data.FakeDataSource
+import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.data.remote.AnimeApi
 import com.example.animedev20.ui.theme.data.remote.AuthApiPlain
 import com.example.animedev20.ui.theme.data.remote.AuthTokenStore
@@ -14,6 +14,7 @@ import com.example.animedev20.ui.theme.data.remote.UserSettingsDto
 import com.example.animedev20.ui.theme.data.remote.UsersApi
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.Genre
+import com.example.animedev20.ui.theme.domain.model.UserDemographicCatalog
 import com.example.animedev20.ui.theme.domain.model.UserProfile
 import com.example.animedev20.ui.theme.domain.model.UserSettings
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
@@ -26,11 +27,12 @@ class RemoteUserRepositoryImpl(
     private val usersApi: UsersApi,
     private val animeApi: AnimeApi,
     private val tokenStore: AuthTokenStore,
-    private val context: Context
+    private val context: Context,
+    private val homeRefreshBus: HomeRefreshBus
 ) : UserRepository {
 
-    private val profileFlow = MutableStateFlow(FakeDataSource.defaultUserProfile)
-    private var cachedSettings: UserSettings = FakeDataSource.defaultUserSettings
+    private val profileFlow = MutableStateFlow(emptyUserProfile())
+    private var cachedSettings: UserSettings = emptyUserSettings()
     private var cachedGenresById: Map<Int, Genre> = emptyMap()
     private var deviceId: String = "unknown"
     private var isInitialized = false
@@ -72,6 +74,7 @@ class RemoteUserRepositoryImpl(
             favoriteGenres = updated.preferredGenres,
             preferredDurations = updated.preferredDurations
         )
+        homeRefreshBus.trigger()
         return updated
     }
 
@@ -126,9 +129,8 @@ class RemoteUserRepositoryImpl(
             ageRange = ageRange ?: current.ageRange,
             genderCode = genderCode ?: current.genderCode,
             regionCode = regionCode ?: current.regionCode,
-            preferredGenres = resolvedGenres.ifEmpty { current.preferredGenres },
-            preferredDurations = preferredDurations.mapNotNull { it.toDurationTypeOrNull() }
-                .ifEmpty { current.preferredDurations },
+            preferredGenres = resolvedGenres,
+            preferredDurations = preferredDurations.mapNotNull { it.toDurationTypeOrNull() },
             notificationsEnabled = toggles["notificationsEnabled"] ?: current.notificationsEnabled,
             culturalAlertsEnabled = toggles["culturalAlertsEnabled"] ?: current.culturalAlertsEnabled,
             autoplayNextEpisode = toggles["autoplayNextEpisode"] ?: current.autoplayNextEpisode,
@@ -179,4 +181,33 @@ class RemoteUserRepositoryImpl(
     private fun String.toDurationTypeOrNull(): DurationType? {
         return DurationType.entries.firstOrNull { it.name.equals(this, ignoreCase = true) }
     }
+
+    private fun emptyUserProfile(): UserProfile = UserProfile(
+        id = "",
+        name = "",
+        nickname = "",
+        email = "",
+        avatarUrl = "",
+        knowledgeLevel = "",
+        xpPoints = 0,
+        biography = "",
+        totalAnimesWatched = 0,
+        completedTrivias = 0,
+        preferredDurations = emptyList(),
+        favoriteGenres = emptyList(),
+        badges = emptyList(),
+        favoriteQuote = null
+    )
+
+    private fun emptyUserSettings(): UserSettings = UserSettings(
+        ageRange = UserDemographicCatalog.UNSPECIFIED_CODE,
+        genderCode = UserDemographicCatalog.UNSPECIFIED_CODE,
+        regionCode = UserDemographicCatalog.UNSPECIFIED_CODE,
+        preferredGenres = emptyList(),
+        preferredDurations = emptyList(),
+        notificationsEnabled = true,
+        culturalAlertsEnabled = true,
+        autoplayNextEpisode = true,
+        hasCompletedOnboarding = false
+    )
 }

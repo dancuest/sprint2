@@ -58,7 +58,8 @@ fun OnboardingPreferencesRoute(
     viewModel: OnboardingPreferencesViewModel = viewModel(
         factory = OnboardingPreferencesViewModel.provideFactory(
             userRepository = appContainer.userRepository,
-            animeRepository = appContainer.animeRepository
+            animeRepository = appContainer.animeRepository,
+            homeRefreshBus = appContainer.homeRefreshBus
         )
     )
 ) {

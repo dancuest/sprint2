@@ -1,6 +1,7 @@
 package com.example.animedev20.ui.theme.domain.usecase
 
 import com.example.animedev20.ui.theme.domain.model.AnimeSection
+import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.HomeContent
 import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
@@ -16,27 +17,17 @@ class GetHomeContentUseCase(
     }
 
     suspend operator fun invoke(): Result<HomeContent> = try {
-        // 1) Hero primero (1 request)
         val heroAnime = animeRepository.getHeroRecommendation()
-
-        // 2) Géneros preferidos (no debería ser red, normalmente es local)
         val preferredGenres = userRepository.getPreferredGenres()
-
-        // 3) Secciones por género, PERO en serie + throttle
         val sections = mutableListOf<AnimeSection>()
 
-        // NUEVO: Agregar sección "Para Ti" basada en Filtro Colaborativo (Coseno)
-        try {
-            val recommendations = animeRepository.getAdaptiveRecommendations()
-            if (recommendations.isNotEmpty()) {
-                sections += AnimeSection(
-                    genre = com.example.animedev20.ui.theme.domain.model.Genre("recommendations", "Para Ti (Sugerencias Inteligentes)"),
-                    animes = recommendations
-                )
-            }
-        } catch (e: Exception) {
-            // Falla silenciosa si no cargan las recomendaciones, seguimos con géneros
-        }
+        val recommendations = runCatching { animeRepository.getAdaptiveRecommendations() }
+            .getOrElse { emptyList() }
+
+        sections += AnimeSection(
+            genre = Genre("recommendations", "Para Ti (Sugerencias Inteligentes)"),
+            animes = recommendations
+        )
 
         if (preferredGenres.isNotEmpty()) delay(THROTTLE_MS)
 
