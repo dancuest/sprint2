@@ -135,7 +135,7 @@ class RemoteUserRepositoryImpl(
 
     private suspend fun resolvePreferredGenres(settings: UserSettingsDto): List<Genre> {
         settings.preferredGenreDetails?.takeIf { it.isNotEmpty() }?.let { details ->
-            return details.map(GenreDto::toDomain)
+            return details.map { it.toDomainModel() }
         }
 
         val preferredIds = settings.preferredGenres
@@ -153,7 +153,7 @@ class RemoteUserRepositoryImpl(
         }.toMap()
     }
 
-    private fun GenreDto.toDomain(): Genre {
+    private fun GenreDto.toDomainModel(): Genre {
         return Genre(id = id.toString(), name = name)
     }
 
@@ -171,6 +171,6 @@ class RemoteUserRepositoryImpl(
     }
 
     private fun String.toDurationTypeOrNull(): DurationType? {
-        return DurationType.values().firstOrNull { it.name.equals(this, ignoreCase = true) }
+        return DurationType.entries.firstOrNull { it.name.equals(this, ignoreCase = true) }
     }
 }
