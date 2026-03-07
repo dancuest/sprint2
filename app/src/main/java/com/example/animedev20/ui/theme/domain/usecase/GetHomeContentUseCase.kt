@@ -25,6 +25,19 @@ class GetHomeContentUseCase(
         // 3) Secciones por género, PERO en serie + throttle
         val sections = mutableListOf<AnimeSection>()
 
+        // NUEVO: Agregar sección "Para Ti" basada en Filtro Colaborativo (Coseno)
+        try {
+            val recommendations = animeRepository.getAdaptiveRecommendations()
+            if (recommendations.isNotEmpty()) {
+                sections += AnimeSection(
+                    genre = com.example.animedev20.ui.theme.domain.model.Genre("recommendations", "Para Ti (Sugerencias Inteligentes)"),
+                    animes = recommendations
+                )
+            }
+        } catch (e: Exception) {
+            // Falla silenciosa si no cargan las recomendaciones, seguimos con géneros
+        }
+
         if (preferredGenres.isNotEmpty()) delay(THROTTLE_MS)
 
         for ((index, genre) in preferredGenres.withIndex()) {

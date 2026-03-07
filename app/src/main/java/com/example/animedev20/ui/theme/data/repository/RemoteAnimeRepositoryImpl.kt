@@ -61,6 +61,16 @@ class RemoteAnimeRepositoryImpl(
         )
     }
 
+    override suspend fun getAdaptiveRecommendations(): List<Anime> {
+        val fallback = suspend { animeApi.getTop(limit = 10).data }
+
+        return fetchWithFallback(
+            primary = { animeApi.getAdaptiveRecommendations().data },
+            fallback = fallback,
+            errorMessage = "No pudimos cargar tus recomendaciones personalizadas."
+        )
+    }
+
     private suspend fun <T> fetchWithFallback(
         primary: suspend () -> T,
         fallback: suspend () -> T,
