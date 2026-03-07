@@ -8,6 +8,7 @@ import com.example.animedev20.ui.theme.data.remote.AuthApiPlain
 import com.example.animedev20.ui.theme.data.remote.AuthTokenStore
 import com.example.animedev20.ui.theme.data.remote.InteractionsApi
 import com.example.animedev20.ui.theme.data.remote.UsersApi
+import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.data.repository.FakeAnimeRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FakeFavoritesRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FakeUserRepositoryImpl
@@ -32,6 +33,7 @@ interface AppContainer {
     val triviaRepository: TriviaRepository
     val userRepository: UserRepository
     val interactionRepository: InteractionRepository
+    val homeRefreshBus: HomeRefreshBus
 }
 
 class DefaultAppContainer(
@@ -47,6 +49,9 @@ class DefaultAppContainer(
     private val authApiPlain = retrofit?.create(AuthApiPlain::class.java)
     private val usersApi = retrofit?.create(UsersApi::class.java)
     private val interactionsApi = retrofit?.create(InteractionsApi::class.java)
+
+
+    override val homeRefreshBus: HomeRefreshBus = HomeRefreshBus()
 
     override val interactionRepository: InteractionRepository =
         if (useRemote && interactionsApi != null) RemoteInteractionRepositoryImpl(interactionsApi)
@@ -64,7 +69,8 @@ class DefaultAppContainer(
 
     override val favoritesRepository: FavoritesRepository = TrackingFavoritesRepositoryImpl(
         delegate = localFavoritesRepository,
-        interactionRepository = interactionRepository
+        interactionRepository = interactionRepository,
+        homeRefreshBus = homeRefreshBus
     )
 
     private val localTriviaRepository: TriviaRepository = FavoritesTriviaRepositoryImpl(
@@ -75,12 +81,13 @@ class DefaultAppContainer(
 
     override val triviaRepository: TriviaRepository = TrackingTriviaRepositoryImpl(
         delegate = localTriviaRepository,
-        interactionRepository = interactionRepository
+        interactionRepository = interactionRepository,
+        homeRefreshBus = homeRefreshBus
     )
 
     override val userRepository: UserRepository =
         if (useRemote && authApiPlain != null && usersApi != null && tokenStore != null && appContext != null && animeApi != null) {
-            RemoteUserRepositoryImpl(authApiPlain, usersApi, animeApi, tokenStore, appContext).apply {
+            RemoteUserRepositoryImpl(authApiPlain, usersApi, animeApi, tokenStore, appContext, homeRefreshBus).apply {
                 initialize(appContext)
             }
         } else {

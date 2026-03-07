@@ -1,5 +1,6 @@
 package com.example.animedev20.ui.theme.data.repository
 
+import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaQuestion
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaSummary
@@ -9,7 +10,8 @@ import kotlinx.coroutines.flow.Flow
 
 class TrackingTriviaRepositoryImpl(
     private val delegate: TriviaRepository,
-    private val interactionRepository: InteractionRepository
+    private val interactionRepository: InteractionRepository,
+    private val homeRefreshBus: HomeRefreshBus
 ) : TriviaRepository {
     override fun getTriviaSummaries(): Flow<List<TriviaSummary>> = delegate.getTriviaSummaries()
 
@@ -20,5 +22,6 @@ class TrackingTriviaRepositoryImpl(
     override suspend fun recordResult(animeId: Long, difficulty: TriviaDifficulty, score: Int, totalQuestions: Int) {
         delegate.recordResult(animeId, difficulty, score, totalQuestions)
         interactionRepository.trackTriviaScore(animeId, score, totalQuestions)
+        homeRefreshBus.trigger()
     }
 }

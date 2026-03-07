@@ -3,6 +3,7 @@ package com.example.animedev20.ui.theme.feature.settings.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.UserDemographicCatalog
@@ -17,7 +18,8 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val userRepository: UserRepository,
-    private val animeRepository: AnimeRepository
+    private val animeRepository: AnimeRepository,
+    private val homeRefreshBus: HomeRefreshBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -143,6 +145,7 @@ class SettingsViewModel(
                 userRepository.updateUserSettings(updatedSettings)
             }
                 .onSuccess {
+                    homeRefreshBus.trigger()
                     _uiState.update { current ->
                         current.copy(message = "Preferencias actualizadas")
                     }
@@ -184,12 +187,13 @@ class SettingsViewModel(
     companion object {
         fun provideFactory(
             userRepository: UserRepository,
-            animeRepository: AnimeRepository
+            animeRepository: AnimeRepository,
+            homeRefreshBus: HomeRefreshBus
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
-                    return SettingsViewModel(userRepository, animeRepository) as T
+                    return SettingsViewModel(userRepository, animeRepository, homeRefreshBus) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }
@@ -201,7 +205,7 @@ data class SettingsUiState(
     val isLoading: Boolean = true,
     val availableGenres: List<Genre> = emptyList(),
     val selectedGenres: Set<String> = emptySet(),
-    val preferredDurations: Set<DurationType> = setOf(DurationType.MEDIUM),
+    val preferredDurations: Set<DurationType> = emptySet(),
     val ageRange: Int = UserDemographicCatalog.UNSPECIFIED_CODE,
     val genderCode: Int = UserDemographicCatalog.UNSPECIFIED_CODE,
     val regionCode: Int = UserDemographicCatalog.UNSPECIFIED_CODE,

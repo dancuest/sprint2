@@ -55,7 +55,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(
         factory = SettingsViewModel.provideFactory(
             userRepository = appContainer.userRepository,
-            animeRepository = appContainer.animeRepository
+            animeRepository = appContainer.animeRepository,
+            homeRefreshBus = appContainer.homeRefreshBus
         )
     )
 ) {

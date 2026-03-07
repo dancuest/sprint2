@@ -3,6 +3,7 @@ package com.example.animedev20.ui.theme.feature.onboarding.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.UserSettings
@@ -17,7 +18,8 @@ import kotlinx.coroutines.launch
 
 class OnboardingPreferencesViewModel(
     private val userRepository: UserRepository,
-    private val animeRepository: AnimeRepository
+    private val animeRepository: AnimeRepository,
+    private val homeRefreshBus: HomeRefreshBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingPreferencesUiState())
@@ -138,6 +140,7 @@ class OnboardingPreferencesViewModel(
             )
             runCatching { userRepository.updateUserSettings(settings) }
                 .onSuccess {
+                    homeRefreshBus.trigger()
                     _uiState.update { it.copy(isSaving = false, completed = true) }
                 }
                 .onFailure { error ->
@@ -155,12 +158,13 @@ class OnboardingPreferencesViewModel(
     companion object {
         fun provideFactory(
             userRepository: UserRepository,
-            animeRepository: AnimeRepository
+            animeRepository: AnimeRepository,
+            homeRefreshBus: HomeRefreshBus
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(OnboardingPreferencesViewModel::class.java)) {
-                    return OnboardingPreferencesViewModel(userRepository, animeRepository) as T
+                    return OnboardingPreferencesViewModel(userRepository, animeRepository, homeRefreshBus) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }
