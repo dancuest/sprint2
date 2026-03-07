@@ -6,12 +6,30 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object AnimeApiFactory {
-    fun createRetrofit(baseUrl: String): Retrofit {
+    fun createRetrofit(baseUrl: String, tokenStore: AuthTokenStore): Retrofit {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
+        val authInterceptor = okhttp3.Interceptor { chain ->
+            val request = chain.request()
+            val path = request.url.encodedPath
+            val shouldSkipAuth = path.contains("/auth/device")
+            val token = tokenStore.getToken()
+
+            val authenticatedRequest = if (!shouldSkipAuth && !token.isNullOrBlank()) {
+                request.newBuilder()
+                    .header("Authorization", "Bearer $token")
+                    .build()
+            } else {
+                request
+            }
+
+            chain.proceed(authenticatedRequest)
+        }
+
         val okHttpClient = OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)
             .build()
 
@@ -24,7 +42,7 @@ object AnimeApiFactory {
             .build()
     }
 
-    fun create(baseUrl: String): AnimeApi {
-        return createRetrofit(baseUrl).create(AnimeApi::class.java)
+    fun create(baseUrl: String, tokenStore: AuthTokenStore): AnimeApi {
+        return createRetrofit(baseUrl, tokenStore).create(AnimeApi::class.java)
     }
 }
