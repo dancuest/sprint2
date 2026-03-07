@@ -1,11 +1,15 @@
 package com.example.animedev20.ui.theme.data.repository
 
 import android.content.Context
-import android.provider.Settings
-import androidx.core.content.edit
 import com.example.animedev20.ui.theme.data.FakeDataSource
-import com.example.animedev20.ui.theme.data.remote.AuthApi
+import com.example.animedev20.ui.theme.data.remote.AuthApiPlain
+import com.example.animedev20.ui.theme.data.remote.AuthTokenStore
 import com.example.animedev20.ui.theme.data.remote.DeviceLoginRequest
+import com.example.animedev20.ui.theme.data.remote.UpdateProfileRequest
+import com.example.animedev20.ui.theme.data.remote.UpdateSettingsRequest
+import com.example.animedev20.ui.theme.data.remote.UserMeDto
+import com.example.animedev20.ui.theme.data.remote.UserSettingsDto
+import com.example.animedev20.ui.theme.data.remote.UsersApi
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.UserProfile
@@ -14,129 +18,126 @@ import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import android.util.Log
 
 class RemoteUserRepositoryImpl(
-    private val authApi: AuthApi
+    private val authApi: AuthApiPlain,
+    private val usersApi: UsersApi,
+    private val tokenStore: AuthTokenStore,
+    private val context: Context
 ) : UserRepository {
 
-    private val PREFS_NAME = "animedev_user_prefs_remote"
-    private val KEY_GENRES = "settings_genres"
-    private val KEY_DURATIONS = "settings_durations"
-    private val KEY_NOTIFICATIONS = "settings_notifications"
-    private val KEY_CULTURAL_ALERTS = "settings_cultural_alerts"
-    private val KEY_AUTOPLAY = "settings_autoplay"
-    private val KEY_ONBOARDING_COMPLETED = "settings_onboarding_completed"
-
-    private var cachedSettings: UserSettings = FakeDataSource.defaultUserSettings
     private val profileFlow = MutableStateFlow(FakeDataSource.defaultUserProfile)
-    private var appContext: Context? = null
-    private var isInitialized = false
+    private var cachedSettings: UserSettings = FakeDataSource.defaultUserSettings
     private var deviceId: String = "unknown"
+    private var isInitialized = false
 
     fun initialize(context: Context) {
         if (isInitialized) return
-        appContext = context.applicationContext
-        
-        deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown_device"
-        Log.d("RemoteUserRepository", "Initializing with device ID: $deviceId")
-        
-        val prefs = appContext!!.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val defaultSettings = FakeDataSource.defaultUserSettings
-
-        val restoredGenres = prefs.getStringSet(KEY_GENRES, null)
-            ?.mapNotNull(::decodeGenre)
-            ?.ifEmpty { null }
-            ?: defaultSettings.preferredGenres
-
-        val restoredDurations = prefs.getStringSet(KEY_DURATIONS, null)
-            ?.mapNotNull { name -> DurationType.values().firstOrNull { it.name == name } }
-            ?.ifEmpty { null }
-            ?: defaultSettings.preferredDurations
-
-        cachedSettings = defaultSettings.copy(
-            preferredGenres = restoredGenres,
-            preferredDurations = restoredDurations,
-            notificationsEnabled = prefs.getBoolean(KEY_NOTIFICATIONS, defaultSettings.notificationsEnabled),
-            culturalAlertsEnabled = prefs.getBoolean(KEY_CULTURAL_ALERTS, defaultSettings.culturalAlertsEnabled),
-            autoplayNextEpisode = prefs.getBoolean(KEY_AUTOPLAY, defaultSettings.autoplayNextEpisode),
-            hasCompletedOnboarding = prefs.getBoolean(KEY_ONBOARDING_COMPLETED, defaultSettings.hasCompletedOnboarding)
-        )
+        deviceId = tokenStore.getOrCreateDeviceId(context)
         isInitialized = true
     }
 
-    override suspend fun getPreferredGenres(): List<Genre> {
-        return cachedSettings.preferredGenres
-    }
+    override suspend fun getPreferredGenres(): List<Genre> = getUserSettings().preferredGenres
 
     override suspend fun getUserProfile(): UserProfile {
-        try {
-            val response = authApi.loginDevice(DeviceLoginRequest(deviceId))
-            val profile = response.data.user
-            profileFlow.value = profile
-            return profile
-        } catch (e: Exception) {
-            Log.e("RemoteUserRepo", "Error en loginDevice API", e)
-        }
-        return profileFlow.value
+        initialize(context)
+        ensureAuthenticated()
+        val profile = usersApi.me().toDomain(profileFlow.value)
+        profileFlow.value = profile
+        return profile
     }
 
     override fun observeUserProfile(): Flow<UserProfile> = profileFlow.asStateFlow()
 
     override suspend fun getUserSettings(): UserSettings {
-        return cachedSettings
-    }
-
-    override suspend fun updateUserSettings(settings: UserSettings): UserSettings {
+        ensureAuthenticated()
+        val settings = usersApi.getSettings().toDomain(cachedSettings)
         cachedSettings = settings
         profileFlow.value = profileFlow.value.copy(
             favoriteGenres = settings.preferredGenres,
             preferredDurations = settings.preferredDurations
         )
-        persistState()
-        return cachedSettings
+        return settings
+    }
+
+    override suspend fun updateUserSettings(settings: UserSettings): UserSettings {
+        ensureAuthenticated()
+        val updated = usersApi.updateSettings(settings.toRequest()).toDomain(settings)
+        cachedSettings = updated
+        profileFlow.value = profileFlow.value.copy(
+            favoriteGenres = updated.preferredGenres,
+            preferredDurations = updated.preferredDurations
+        )
+        return updated
     }
 
     override suspend fun updatePreferredGenres(genres: List<Genre>): List<Genre> {
-        cachedSettings = cachedSettings.copy(preferredGenres = genres)
-        profileFlow.value = profileFlow.value.copy(favoriteGenres = genres)
-        persistState()
-        return cachedSettings.preferredGenres
+        val current = getUserSettings()
+        return updateUserSettings(current.copy(preferredGenres = genres)).preferredGenres
     }
 
-    override suspend fun updateAccountInfo(
-        name: String,
-        email: String,
-        nickname: String
-    ): UserProfile {
-        val updatedProfile = profileFlow.value.copy(
-            name = name,
-            email = email,
-            nickname = nickname
+    override suspend fun updateAccountInfo(name: String, email: String, nickname: String): UserProfile {
+        ensureAuthenticated()
+        val updated = usersApi.updateProfile(
+            UpdateProfileRequest(displayName = name, email = email)
+        ).toDomain(profileFlow.value.copy(nickname = nickname, email = email, name = name))
+
+        val merged = updated.copy(
+            nickname = nickname.ifBlank { updated.nickname }
         )
-        profileFlow.value = updatedProfile
-        return updatedProfile
+        profileFlow.value = merged
+        return merged
     }
 
-    private fun persistState() {
-        val context = appContext ?: return
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
-            putStringSet(KEY_GENRES, cachedSettings.preferredGenres.map { encodeGenre(it) }.toSet())
-            putStringSet(KEY_DURATIONS, cachedSettings.preferredDurations.map { it.name }.toSet())
-            putBoolean(KEY_NOTIFICATIONS, cachedSettings.notificationsEnabled)
-            putBoolean(KEY_CULTURAL_ALERTS, cachedSettings.culturalAlertsEnabled)
-            putBoolean(KEY_AUTOPLAY, cachedSettings.autoplayNextEpisode)
-            putBoolean(KEY_ONBOARDING_COMPLETED, cachedSettings.hasCompletedOnboarding)
+    private suspend fun ensureAuthenticated() {
+        initialize(context)
+        if (tokenStore.getToken().isNullOrBlank()) {
+            val login = authApi.loginDevice(DeviceLoginRequest(deviceId))
+            tokenStore.saveToken(login.accessToken)
+            tokenStore.saveUserId(login.userId)
         }
     }
 
-    private fun encodeGenre(genre: Genre): String = "${genre.id}|${genre.name}"
+    private fun UserMeDto.toDomain(current: UserProfile): UserProfile {
+        val display = displayName?.takeIf { it.isNotBlank() }
+        return current.copy(
+            id = id,
+            name = display ?: current.name,
+            nickname = display ?: current.nickname,
+            email = email ?: current.email
+        )
+    }
 
-    private fun decodeGenre(value: String): Genre? {
-        val separator = value.indexOf('|')
-        if (separator <= 0 || separator == value.lastIndex) return null
-        val id = value.substring(0, separator)
-        val name = value.substring(separator + 1)
-        return Genre(id = id, name = name)
+    private fun UserSettingsDto.toDomain(current: UserSettings): UserSettings {
+        return current.copy(
+            preferredGenres = preferredGenres.map { it.toGenre() }.ifEmpty { current.preferredGenres },
+            preferredDurations = preferredDurations.mapNotNull { it.toDurationTypeOrNull() }
+                .ifEmpty { current.preferredDurations },
+            notificationsEnabled = toggles["notificationsEnabled"] ?: current.notificationsEnabled,
+            culturalAlertsEnabled = toggles["culturalAlertsEnabled"] ?: current.culturalAlertsEnabled,
+            autoplayNextEpisode = toggles["autoplayNextEpisode"] ?: current.autoplayNextEpisode,
+            hasCompletedOnboarding = toggles["hasCompletedOnboarding"] ?: current.hasCompletedOnboarding
+        )
+    }
+
+    private fun UserSettings.toRequest(): UpdateSettingsRequest {
+        return UpdateSettingsRequest(
+            preferredGenres = preferredGenres.mapNotNull { it.id.toIntOrNull() },
+            preferredDurations = preferredDurations.map { it.name },
+            toggles = mapOf(
+                "notificationsEnabled" to notificationsEnabled,
+                "culturalAlertsEnabled" to culturalAlertsEnabled,
+                "autoplayNextEpisode" to autoplayNextEpisode,
+                "hasCompletedOnboarding" to hasCompletedOnboarding
+            )
+        )
+    }
+
+    private fun Int.toGenre(): Genre {
+        return Genre(id = toString(), name = "Genre $this")
+    }
+
+    private fun String.toDurationTypeOrNull(): DurationType? {
+        return DurationType.values().firstOrNull { it.name.equals(this, ignoreCase = true) }
     }
 }

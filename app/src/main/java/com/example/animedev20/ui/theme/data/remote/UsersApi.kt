@@ -1,0 +1,53 @@
+package com.example.animedev20.ui.theme.data.remote
+
+import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.PUT
+
+data class UserMeDto(
+    val id: String,
+    val deviceId: String,
+    val email: String?,
+    val displayName: String?,
+    val createdAt: String?
+)
+
+data class UpdateProfileRequest(
+    val displayName: String? = null,
+    val email: String? = null
+)
+
+data class UserSettingsDto(
+    val userId: String,
+    val ageRange: String? = null,
+    val genderCode: String? = null,
+    val regionCode: String? = null,
+    val preferredGenres: List<Int> = emptyList(),
+    val preferredDurations: List<String> = emptyList(),
+    val toggles: Map<String, Boolean> = emptyMap(),
+    val createdAt: String? = null,
+    val updatedAt: String? = null
+)
+
+data class UpdateSettingsRequest(
+    val ageRange: String? = null,
+    val genderCode: String? = null,
+    val regionCode: String? = null,
+    val preferredGenres: List<Int>? = null,
+    val preferredDurations: List<String>? = null,
+    val toggles: Map<String, Boolean>? = null
+)
+
+interface UsersApi {
+    @GET("users/me")
+    suspend fun me(): UserMeDto
+
+    @PUT("users/me/profile")
+    suspend fun updateProfile(@Body req: UpdateProfileRequest): UserMeDto
+
+    @GET("users/me/settings")
+    suspend fun getSettings(): UserSettingsDto
+
+    @PUT("users/me/settings")
+    suspend fun updateSettings(@Body req: UpdateSettingsRequest): UserSettingsDto
+}
