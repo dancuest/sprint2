@@ -6,15 +6,21 @@ import com.example.animedev20.ui.theme.data.remote.AnimeApiFactory
 import com.example.animedev20.ui.theme.data.remote.ApiConfig
 import com.example.animedev20.ui.theme.data.remote.AuthApiPlain
 import com.example.animedev20.ui.theme.data.remote.AuthTokenStore
+import com.example.animedev20.ui.theme.data.remote.InteractionsApi
 import com.example.animedev20.ui.theme.data.remote.UsersApi
 import com.example.animedev20.ui.theme.data.repository.FakeAnimeRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FakeFavoritesRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FakeUserRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FavoritesTriviaRepositoryImpl
+import com.example.animedev20.ui.theme.data.repository.NoOpInteractionRepositoryImpl
+import com.example.animedev20.ui.theme.data.repository.RemoteInteractionRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.RemoteAnimeRepositoryImpl
+import com.example.animedev20.ui.theme.data.repository.TrackingFavoritesRepositoryImpl
+import com.example.animedev20.ui.theme.data.repository.TrackingTriviaRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.RemoteUserRepositoryImpl
 import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.FavoritesRepository
+import com.example.animedev20.ui.theme.domain.repository.InteractionRepository
 import com.example.animedev20.ui.theme.domain.repository.TriviaRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 
@@ -25,6 +31,7 @@ interface AppContainer {
     val favoritesRepository: FavoritesRepository
     val triviaRepository: TriviaRepository
     val userRepository: UserRepository
+    val interactionRepository: InteractionRepository
 }
 
 class DefaultAppContainer(
@@ -39,6 +46,11 @@ class DefaultAppContainer(
     private val animeApi = retrofit?.create(AnimeApi::class.java)
     private val authApiPlain = retrofit?.create(AuthApiPlain::class.java)
     private val usersApi = retrofit?.create(UsersApi::class.java)
+    private val interactionsApi = retrofit?.create(InteractionsApi::class.java)
+
+    override val interactionRepository: InteractionRepository =
+        if (useRemote && interactionsApi != null) RemoteInteractionRepositoryImpl(interactionsApi)
+        else NoOpInteractionRepositoryImpl
 
     override val animeRepository: AnimeRepository = if (useRemote && animeApi != null) {
         RemoteAnimeRepositoryImpl(animeApi)
@@ -46,19 +58,29 @@ class DefaultAppContainer(
         FakeAnimeRepositoryImpl()
     }
 
-    override val favoritesRepository: FavoritesRepository = FakeFavoritesRepositoryImpl.apply {
+    private val localFavoritesRepository: FavoritesRepository = FakeFavoritesRepositoryImpl.apply {
         context?.let(::initialize)
     }
 
-    override val triviaRepository: TriviaRepository = FavoritesTriviaRepositoryImpl(
+    override val favoritesRepository: FavoritesRepository = TrackingFavoritesRepositoryImpl(
+        delegate = localFavoritesRepository,
+        interactionRepository = interactionRepository
+    )
+
+    private val localTriviaRepository: TriviaRepository = FavoritesTriviaRepositoryImpl(
         favoritesRepository = favoritesRepository,
         animeRepository = animeRepository,
         context = context
     )
 
+    override val triviaRepository: TriviaRepository = TrackingTriviaRepositoryImpl(
+        delegate = localTriviaRepository,
+        interactionRepository = interactionRepository
+    )
+
     override val userRepository: UserRepository =
-        if (useRemote && authApiPlain != null && usersApi != null && tokenStore != null && appContext != null) {
-            RemoteUserRepositoryImpl(authApiPlain, usersApi, tokenStore, appContext).apply {
+        if (useRemote && authApiPlain != null && usersApi != null && tokenStore != null && appContext != null && animeApi != null) {
+            RemoteUserRepositoryImpl(authApiPlain, usersApi, animeApi, tokenStore, appContext).apply {
                 initialize(appContext)
             }
         } else {

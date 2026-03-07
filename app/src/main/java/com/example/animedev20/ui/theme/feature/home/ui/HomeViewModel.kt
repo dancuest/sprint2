@@ -9,16 +9,21 @@ import com.example.animedev20.ui.theme.domain.usecase.GetHomeContentUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
-    private val getHomeContentUseCase: GetHomeContentUseCase
+    private val getHomeContentUseCase: GetHomeContentUseCase,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
+        observePreferencesUpdates()
         loadHomeContent()
     }
 
@@ -39,6 +44,19 @@ class HomeViewModel(
         }
     }
 
+    private fun observePreferencesUpdates() {
+        viewModelScope.launch {
+            userRepository.observeUserProfile()
+                .map { profile ->
+                    profile.favoriteGenres.map { genre -> genre.id } to profile.preferredDurations
+                }
+                .distinctUntilChanged()
+                .collect {
+                    loadHomeContent()
+                }
+        }
+    }
+
     companion object {
         fun provideFactory(
             animeRepository: AnimeRepository,
@@ -48,7 +66,7 @@ class HomeViewModel(
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
                     val useCase = GetHomeContentUseCase(animeRepository, userRepository)
-                    return HomeViewModel(useCase) as T
+                    return HomeViewModel(useCase, userRepository) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }

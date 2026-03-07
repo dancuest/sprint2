@@ -78,7 +78,8 @@ fun AnimeDetailScreen(
         factory = AnimeDetailViewModel.provideFactory(
             animeId = animeId,
             animeRepository = appContainer.animeRepository,
-            favoritesRepository = appContainer.favoritesRepository
+            favoritesRepository = appContainer.favoritesRepository,
+            interactionRepository = appContainer.interactionRepository
         )
     )
     val uiState by viewModel.uiState.collectAsState()

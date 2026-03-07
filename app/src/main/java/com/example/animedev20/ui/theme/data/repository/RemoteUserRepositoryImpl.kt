@@ -2,9 +2,11 @@ package com.example.animedev20.ui.theme.data.repository
 
 import android.content.Context
 import com.example.animedev20.ui.theme.data.FakeDataSource
+import com.example.animedev20.ui.theme.data.remote.AnimeApi
 import com.example.animedev20.ui.theme.data.remote.AuthApiPlain
 import com.example.animedev20.ui.theme.data.remote.AuthTokenStore
 import com.example.animedev20.ui.theme.data.remote.DeviceLoginRequest
+import com.example.animedev20.ui.theme.data.remote.GenreDto
 import com.example.animedev20.ui.theme.data.remote.UpdateProfileRequest
 import com.example.animedev20.ui.theme.data.remote.UpdateSettingsRequest
 import com.example.animedev20.ui.theme.data.remote.UserMeDto
@@ -22,12 +24,14 @@ import kotlinx.coroutines.flow.asStateFlow
 class RemoteUserRepositoryImpl(
     private val authApi: AuthApiPlain,
     private val usersApi: UsersApi,
+    private val animeApi: AnimeApi,
     private val tokenStore: AuthTokenStore,
     private val context: Context
 ) : UserRepository {
 
     private val profileFlow = MutableStateFlow(FakeDataSource.defaultUserProfile)
     private var cachedSettings: UserSettings = FakeDataSource.defaultUserSettings
+    private var cachedGenresById: Map<Int, Genre> = emptyMap()
     private var deviceId: String = "unknown"
     private var isInitialized = false
 
@@ -78,12 +82,20 @@ class RemoteUserRepositoryImpl(
 
     override suspend fun updateAccountInfo(name: String, email: String, nickname: String): UserProfile {
         ensureAuthenticated()
+        val normalizedEmail = email.takeIf { it.isNotBlank() }
         val updated = usersApi.updateProfile(
-            UpdateProfileRequest(displayName = name, email = email)
-        ).toDomain(profileFlow.value.copy(nickname = nickname, email = email, name = name))
+            UpdateProfileRequest(displayName = name, email = normalizedEmail)
+        ).toDomain(
+            profileFlow.value.copy(
+                nickname = nickname,
+                email = normalizedEmail ?: profileFlow.value.email,
+                name = name
+            )
+        )
 
         val merged = updated.copy(
-            nickname = nickname.ifBlank { updated.nickname }
+            nickname = nickname.ifBlank { updated.nickname },
+            email = normalizedEmail ?: updated.email
         )
         profileFlow.value = merged
         return merged
@@ -108,9 +120,10 @@ class RemoteUserRepositoryImpl(
         )
     }
 
-    private fun UserSettingsDto.toDomain(current: UserSettings): UserSettings {
+    private suspend fun UserSettingsDto.toDomain(current: UserSettings): UserSettings {
+        val resolvedGenres = resolvePreferredGenres(this)
         return current.copy(
-            preferredGenres = preferredGenres.map { it.toGenre() }.ifEmpty { current.preferredGenres },
+            preferredGenres = resolvedGenres.ifEmpty { current.preferredGenres },
             preferredDurations = preferredDurations.mapNotNull { it.toDurationTypeOrNull() }
                 .ifEmpty { current.preferredDurations },
             notificationsEnabled = toggles["notificationsEnabled"] ?: current.notificationsEnabled,
@@ -118,6 +131,30 @@ class RemoteUserRepositoryImpl(
             autoplayNextEpisode = toggles["autoplayNextEpisode"] ?: current.autoplayNextEpisode,
             hasCompletedOnboarding = toggles["hasCompletedOnboarding"] ?: current.hasCompletedOnboarding
         )
+    }
+
+    private suspend fun resolvePreferredGenres(settings: UserSettingsDto): List<Genre> {
+        settings.preferredGenreDetails?.takeIf { it.isNotEmpty() }?.let { details ->
+            return details.map(GenreDto::toDomain)
+        }
+
+        val preferredIds = settings.preferredGenres
+        if (preferredIds.isEmpty()) return emptyList()
+
+        ensureGenresCache()
+        return preferredIds.mapNotNull { genreId -> cachedGenresById[genreId] }
+    }
+
+    private suspend fun ensureGenresCache() {
+        if (cachedGenresById.isNotEmpty()) return
+        val genres = animeApi.getGenres().data
+        cachedGenresById = genres.mapNotNull { genre ->
+            genre.id.toIntOrNull()?.let { it to genre }
+        }.toMap()
+    }
+
+    private fun GenreDto.toDomain(): Genre {
+        return Genre(id = id.toString(), name = name)
     }
 
     private fun UserSettings.toRequest(): UpdateSettingsRequest {
@@ -131,10 +168,6 @@ class RemoteUserRepositoryImpl(
                 "hasCompletedOnboarding" to hasCompletedOnboarding
             )
         )
-    }
-
-    private fun Int.toGenre(): Genre {
-        return Genre(id = toString(), name = "Genre $this")
     }
 
     private fun String.toDurationTypeOrNull(): DurationType? {

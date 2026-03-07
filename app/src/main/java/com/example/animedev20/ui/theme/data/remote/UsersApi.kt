@@ -19,20 +19,26 @@ data class UpdateProfileRequest(
 
 data class UserSettingsDto(
     val userId: String,
-    val ageRange: String? = null,
-    val genderCode: String? = null,
-    val regionCode: String? = null,
+    val ageRange: Int? = null,
+    val genderCode: Int? = null,
+    val regionCode: Int? = null,
     val preferredGenres: List<Int> = emptyList(),
+    val preferredGenreDetails: List<GenreDto>? = null,
     val preferredDurations: List<String> = emptyList(),
     val toggles: Map<String, Boolean> = emptyMap(),
     val createdAt: String? = null,
     val updatedAt: String? = null
 )
 
+data class GenreDto(
+    val id: Int,
+    val name: String
+)
+
 data class UpdateSettingsRequest(
-    val ageRange: String? = null,
-    val genderCode: String? = null,
-    val regionCode: String? = null,
+    val ageRange: Int? = null,
+    val genderCode: Int? = null,
+    val regionCode: Int? = null,
     val preferredGenres: List<Int>? = null,
     val preferredDurations: List<String>? = null,
     val toggles: Map<String, Boolean>? = null
