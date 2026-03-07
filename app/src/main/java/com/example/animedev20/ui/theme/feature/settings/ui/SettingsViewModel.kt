@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.Genre
+import com.example.animedev20.ui.theme.domain.model.UserDemographicCatalog
 import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import kotlinx.coroutines.async
@@ -41,6 +42,9 @@ class SettingsViewModel(
                         availableGenres = genres,
                         selectedGenres = settings.preferredGenres.map { genre -> genre.id }.toSet(),
                         preferredDurations = settings.preferredDurations.toSet(),
+                        ageRange = settings.ageRange,
+                        genderCode = settings.genderCode,
+                        regionCode = settings.regionCode,
                         notificationsEnabled = settings.notificationsEnabled,
                         culturalAlertsEnabled = settings.culturalAlertsEnabled,
                         autoplayNextEpisode = settings.autoplayNextEpisode,
@@ -80,6 +84,19 @@ class SettingsViewModel(
         }
     }
 
+
+    fun onAgeRangeSelected(code: Int) {
+        _uiState.update { it.copy(ageRange = code) }
+    }
+
+    fun onGenderSelected(code: Int) {
+        _uiState.update { it.copy(genderCode = code) }
+    }
+
+    fun onRegionSelected(code: Int) {
+        _uiState.update { it.copy(regionCode = code) }
+    }
+
     fun onNotificationsToggled(enabled: Boolean) {
         _uiState.update { it.copy(notificationsEnabled = enabled) }
     }
@@ -113,6 +130,9 @@ class SettingsViewModel(
             runCatching {
                 val currentSettings = userRepository.getUserSettings()
                 val updatedSettings = currentSettings.copy(
+                    ageRange = state.ageRange,
+                    genderCode = state.genderCode,
+                    regionCode = state.regionCode,
                     preferredGenres = selectedGenres,
                     preferredDurations = state.preferredDurations.toList(),
                     notificationsEnabled = state.notificationsEnabled,
@@ -182,6 +202,9 @@ data class SettingsUiState(
     val availableGenres: List<Genre> = emptyList(),
     val selectedGenres: Set<String> = emptySet(),
     val preferredDurations: Set<DurationType> = setOf(DurationType.MEDIUM),
+    val ageRange: Int = UserDemographicCatalog.UNSPECIFIED_CODE,
+    val genderCode: Int = UserDemographicCatalog.UNSPECIFIED_CODE,
+    val regionCode: Int = UserDemographicCatalog.UNSPECIFIED_CODE,
     val notificationsEnabled: Boolean = true,
     val culturalAlertsEnabled: Boolean = true,
     val autoplayNextEpisode: Boolean = true,
