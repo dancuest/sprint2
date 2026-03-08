@@ -1,5 +1,6 @@
 package com.example.animedev20.ui.theme.domain.usecase
 
+import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.AnimeSection
 import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.HomeContent
@@ -13,37 +14,72 @@ class GetHomeContentUseCase(
 ) {
 
     private companion object {
-        private const val THROTTLE_MS = 400L
+        private const val THROTTLE_MS = 250L
+        private const val TARGET_SECTION_SIZE = 10
+        private const val MAX_REPEAT_PER_SECTION = 2
     }
 
     suspend operator fun invoke(): Result<HomeContent> = try {
         val heroAnime = animeRepository.getHeroRecommendation()
         val preferredGenres = userRepository.getPreferredGenres()
+
+        val usedAnimeIds = linkedSetOf<Long>()
+        usedAnimeIds += heroAnime.id
+
         val sections = mutableListOf<AnimeSection>()
 
-        val recommendations = runCatching { animeRepository.getAdaptiveRecommendations() }
-            .getOrElse { emptyList() }
+        val recommendationCandidates = runCatching {
+            animeRepository.getAdaptiveRecommendations()
+        }.getOrElse { emptyList() }
 
-        sections += AnimeSection(
-            genre = Genre("recommendations", "Para Ti (Sugerencias Inteligentes)"),
-            animes = recommendations
-        )
+        val recommendationList = recommendationCandidates
+            .filterNot { it.id in usedAnimeIds }
+            .take(TARGET_SECTION_SIZE)
 
-        if (preferredGenres.isNotEmpty()) delay(THROTTLE_MS)
+        if (recommendationList.isNotEmpty()) {
+            usedAnimeIds += recommendationList.map { it.id }
+            sections += AnimeSection(
+                genre = Genre("recommendations", "Para Ti"),
+                animes = recommendationList
+            )
+        } else {
+            sections += AnimeSection(
+                genre = Genre("recommendations", "Para Ti"),
+                animes = emptyList()
+            )
+        }
 
         for ((index, genre) in preferredGenres.withIndex()) {
-            val animes = try {
+            val candidates = try {
                 animeRepository.getAnimesByGenre(genre.id)
             } catch (_: Exception) {
                 emptyList()
             }
 
-            sections += AnimeSection(
-                genre = genre,
-                animes = animes
-            )
+            val uniqueItems = candidates
+                .filterNot { it.id in usedAnimeIds }
+                .take(TARGET_SECTION_SIZE)
+                .toMutableList()
 
-            if (index != preferredGenres.lastIndex) delay(THROTTLE_MS)
+            if (uniqueItems.size < TARGET_SECTION_SIZE) {
+                val repeats = candidates
+                    .filterNot { anime -> uniqueItems.any { it.id == anime.id } }
+                    .take(MAX_REPEAT_PER_SECTION)
+
+                uniqueItems += repeats
+            }
+
+            if (uniqueItems.isNotEmpty()) {
+                usedAnimeIds += uniqueItems.map { it.id }
+                sections += AnimeSection(
+                    genre = genre,
+                    animes = uniqueItems
+                )
+            }
+
+            if (index != preferredGenres.lastIndex) {
+                delay(THROTTLE_MS)
+            }
         }
 
         Result.success(

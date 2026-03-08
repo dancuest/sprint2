@@ -1,5 +1,6 @@
 package com.example.animedev20.ui.theme.data.repository
 
+import android.util.Log
 import com.example.animedev20.ui.theme.data.remote.AnimeApi
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.AnimeDetail
@@ -11,6 +12,10 @@ class RemoteAnimeRepositoryImpl(
     private val animeApi: AnimeApi
 ) : AnimeRepository {
 
+    companion object {
+        private const val TAG = "RemoteAnimeRepository"
+    }
+
     override suspend fun getHeroRecommendation(): Anime {
         val fallback = suspend {
             val response = animeApi.getTop(limit = 1)
@@ -20,24 +25,30 @@ class RemoteAnimeRepositoryImpl(
         return fetchWithFallback(
             primary = { animeApi.getHero().data },
             fallback = fallback,
-            errorMessage = "No fue posible cargar el anime destacado.\nIntenta más tarde."
+            errorMessage = "No fue posible cargar el anime destacado."
         )
     }
 
     override suspend fun getAnimesByGenre(genreId: String): List<Anime> {
-        val fallback = suspend { animeApi.getTop(limit = 10).data }
-
-        return fetchWithFallback(
-            primary = { animeApi.getByGenre(genreId = genreId, limit = 10).data },
-            fallback = fallback,
-            errorMessage = "No fue posible cargar los animes del género solicitado."
-        )
+        return try {
+            animeApi.getByGenre(genreId = genreId, limit = 18).data
+        } catch (error: HttpException) {
+            Log.w(TAG, "Genre request failed for genreId=$genreId code=${error.code()}")
+            emptyList()
+        } catch (error: Exception) {
+            Log.w(TAG, "Genre request failed for genreId=$genreId", error)
+            emptyList()
+        }
     }
 
     override suspend fun getAnimeDetail(animeId: Long): AnimeDetail {
         val fallback = suspend {
             val anime = animeApi.getById(animeId).data
-            AnimeDetail(anime = anime, culturalNotes = emptyList(), trailers = emptyList())
+            AnimeDetail(
+                anime = anime,
+                culturalNotes = emptyList(),
+                trailers = emptyList()
+            )
         }
 
         return fetchWithFallback(
@@ -62,13 +73,15 @@ class RemoteAnimeRepositoryImpl(
     }
 
     override suspend fun getAdaptiveRecommendations(): List<Anime> {
-        val fallback = suspend { animeApi.getTop(limit = 10).data }
-
-        return fetchWithFallback(
-            primary = { animeApi.getAdaptiveRecommendations().data },
-            fallback = fallback,
-            errorMessage = "No pudimos cargar tus recomendaciones personalizadas."
-        )
+        return try {
+            animeApi.getAdaptiveRecommendations().data
+        } catch (error: HttpException) {
+            Log.w(TAG, "Adaptive recommendations failed code=${error.code()}, using top fallback")
+            animeApi.getTop(limit = 10).data
+        } catch (error: Exception) {
+            Log.w(TAG, "Adaptive recommendations failed, using top fallback", error)
+            animeApi.getTop(limit = 10).data
+        }
     }
 
     private suspend fun <T> fetchWithFallback(
@@ -79,13 +92,11 @@ class RemoteAnimeRepositoryImpl(
         return try {
             primary()
         } catch (error: HttpException) {
-            // Fallback también para rate-limit / gateway / server errors
             when (error.code()) {
                 404, 408, 429, 500, 502, 503, 504 -> safeCall(fallback, errorMessage)
                 else -> throw Exception(errorMessage)
             }
         } catch (error: Exception) {
-            // Si algo random truena (timeouts, etc), intenta fallback
             safeCall(fallback, errorMessage)
         }
     }

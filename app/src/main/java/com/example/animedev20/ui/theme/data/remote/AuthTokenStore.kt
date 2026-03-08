@@ -7,14 +7,20 @@ import java.util.UUID
 
 class AuthTokenStore(private val context: Context) {
 
-    private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val prefs = context.applicationContext.getSharedPreferences(
+        PREFS_NAME,
+        Context.MODE_PRIVATE
+    )
 
     fun getOrCreateDeviceId(context: Context): String {
         val existing = prefs.getString(KEY_DEVICE_ID, null)
         if (!existing.isNullOrBlank()) return existing
 
-        val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-            ?.takeIf { it.isNotBlank() }
+        val androidId = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ANDROID_ID
+        )?.takeIf { it.isNotBlank() }
+
         val deviceId = androidId ?: UUID.randomUUID().toString()
         prefs.edit { putString(KEY_DEVICE_ID, deviceId) }
         return deviceId
@@ -22,12 +28,29 @@ class AuthTokenStore(private val context: Context) {
 
     fun getToken(): String? = prefs.getString(KEY_TOKEN, null)
 
+    fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
+
     fun saveToken(token: String) {
         prefs.edit { putString(KEY_TOKEN, token) }
     }
 
     fun saveUserId(userId: String) {
         prefs.edit { putString(KEY_USER_ID, userId) }
+    }
+
+    fun clearSession() {
+        prefs.edit {
+            remove(KEY_TOKEN)
+            remove(KEY_USER_ID)
+        }
+    }
+
+    fun clearAll() {
+        prefs.edit {
+            remove(KEY_TOKEN)
+            remove(KEY_USER_ID)
+            remove(KEY_DEVICE_ID)
+        }
     }
 
     companion object {
