@@ -20,14 +20,23 @@ class GetHomeContentUseCase(
     }
 
     suspend operator fun invoke(): Result<HomeContent> = try {
-        val heroAnime = animeRepository.getHeroRecommendation()
-        val preferredGenres = userRepository.getPreferredGenres()
+
+        // HERO (protegido contra fallo de API)
+        val heroAnime = runCatching {
+            animeRepository.getHeroRecommendation()
+        }.getOrNull() ?: throw Exception("No se pudo cargar el contenido principal.")
+
+        val preferredGenres = runCatching {
+            userRepository.getPreferredGenres()
+        }.getOrElse { emptyList() }
 
         val usedAnimeIds = linkedSetOf<Long>()
+
         usedAnimeIds += heroAnime.id
 
         val sections = mutableListOf<AnimeSection>()
 
+        // RECOMENDACIONES ADAPTATIVAS
         val recommendationCandidates = runCatching {
             animeRepository.getAdaptiveRecommendations()
         }.getOrElse { emptyList() }
@@ -38,23 +47,19 @@ class GetHomeContentUseCase(
 
         if (recommendationList.isNotEmpty()) {
             usedAnimeIds += recommendationList.map { it.id }
+
             sections += AnimeSection(
                 genre = Genre("recommendations", "Para Ti"),
                 animes = recommendationList
             )
-        } else {
-            sections += AnimeSection(
-                genre = Genre("recommendations", "Para Ti"),
-                animes = emptyList()
-            )
         }
 
+        // SECCIONES POR GENERO
         for ((index, genre) in preferredGenres.withIndex()) {
-            val candidates = try {
+
+            val candidates = runCatching {
                 animeRepository.getAnimesByGenre(genre.id)
-            } catch (_: Exception) {
-                emptyList()
-            }
+            }.getOrElse { emptyList() }
 
             val uniqueItems = candidates
                 .filterNot { it.id in usedAnimeIds }
@@ -62,6 +67,7 @@ class GetHomeContentUseCase(
                 .toMutableList()
 
             if (uniqueItems.size < TARGET_SECTION_SIZE) {
+
                 val repeats = candidates
                     .filterNot { anime -> uniqueItems.any { it.id == anime.id } }
                     .take(MAX_REPEAT_PER_SECTION)
@@ -89,6 +95,7 @@ class GetHomeContentUseCase(
                 sections = sections
             )
         )
+
     } catch (e: Exception) {
         Result.failure(e)
     }

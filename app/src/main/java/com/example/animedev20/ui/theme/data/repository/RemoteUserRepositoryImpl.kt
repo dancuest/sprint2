@@ -33,7 +33,7 @@ class RemoteUserRepositoryImpl(
 
     private val profileFlow = MutableStateFlow(emptyUserProfile())
     private var cachedSettings: UserSettings = emptyUserSettings()
-    private var cachedGenresById: Map<Int, Genre> = emptyMap()
+    private var cachedGenresById: Map<Int, GenreDto> = emptyMap()
     private var deviceId: String = "unknown"
     private var isInitialized = false
 
@@ -48,6 +48,7 @@ class RemoteUserRepositoryImpl(
     override suspend fun getUserProfile(): UserProfile {
         initialize(context)
         ensureAuthenticated()
+
         val profile = usersApi.me().toDomain(profileFlow.value)
         profileFlow.value = profile
         return profile
@@ -57,23 +58,29 @@ class RemoteUserRepositoryImpl(
 
     override suspend fun getUserSettings(): UserSettings {
         ensureAuthenticated()
+
         val settings = usersApi.getSettings().toDomain(cachedSettings)
         cachedSettings = settings
+
         profileFlow.value = profileFlow.value.copy(
             favoriteGenres = settings.preferredGenres,
             preferredDurations = settings.preferredDurations
         )
+
         return settings
     }
 
     override suspend fun updateUserSettings(settings: UserSettings): UserSettings {
         ensureAuthenticated()
+
         val updated = usersApi.updateSettings(settings.toRequest()).toDomain(settings)
         cachedSettings = updated
+
         profileFlow.value = profileFlow.value.copy(
             favoriteGenres = updated.preferredGenres,
             preferredDurations = updated.preferredDurations
         )
+
         homeRefreshBus.trigger()
         return updated
     }
@@ -83,11 +90,20 @@ class RemoteUserRepositoryImpl(
         return updateUserSettings(current.copy(preferredGenres = genres)).preferredGenres
     }
 
-    override suspend fun updateAccountInfo(name: String, email: String, nickname: String): UserProfile {
+    override suspend fun updateAccountInfo(
+        name: String,
+        email: String,
+        nickname: String
+    ): UserProfile {
         ensureAuthenticated()
+
         val normalizedEmail = email.takeIf { it.isNotBlank() }
+
         val updated = usersApi.updateProfile(
-            UpdateProfileRequest(displayName = name, email = normalizedEmail)
+            UpdateProfileRequest(
+                displayName = name,
+                email = normalizedEmail
+            )
         ).toDomain(
             profileFlow.value.copy(
                 nickname = nickname,
@@ -100,12 +116,36 @@ class RemoteUserRepositoryImpl(
             nickname = nickname.ifBlank { updated.nickname },
             email = normalizedEmail ?: updated.email
         )
+
+        profileFlow.value = merged
+        return merged
+    }
+
+    override suspend fun updateProfileImages(
+        avatarUrl: String?,
+        coverImageUrl: String?
+    ): UserProfile {
+        ensureAuthenticated()
+
+        val updated = usersApi.updateProfile(
+            UpdateProfileRequest(
+                avatarUrl = avatarUrl,
+                coverImageUrl = coverImageUrl
+            )
+        ).toDomain(profileFlow.value)
+
+        val merged = updated.copy(
+            avatarUrl = avatarUrl ?: updated.avatarUrl,
+            coverImageUrl = coverImageUrl ?: updated.coverImageUrl
+        )
+
         profileFlow.value = merged
         return merged
     }
 
     private suspend fun ensureAuthenticated() {
         initialize(context)
+
         if (tokenStore.getToken().isNullOrBlank()) {
             val login = authApi.loginDevice(DeviceLoginRequest(deviceId))
             tokenStore.saveToken(login.accessToken)
@@ -115,51 +155,67 @@ class RemoteUserRepositoryImpl(
 
     private fun UserMeDto.toDomain(current: UserProfile): UserProfile {
         val display = displayName?.takeIf { it.isNotBlank() }
+
         return current.copy(
             id = id,
             name = display ?: current.name,
             nickname = display ?: current.nickname,
-            email = email ?: current.email
+            email = email ?: current.email,
+            avatarUrl = avatarUrl ?: current.avatarUrl,
+            coverImageUrl = coverImageUrl ?: current.coverImageUrl,
+            completedTrivias = completedTrivias ?: current.completedTrivias,
+            totalAnimesWatched = favoriteCount ?: current.totalAnimesWatched
         )
     }
 
     private suspend fun UserSettingsDto.toDomain(current: UserSettings): UserSettings {
         val resolvedGenres = resolvePreferredGenres(this)
+
         return current.copy(
             ageRange = ageRange ?: current.ageRange,
             genderCode = genderCode ?: current.genderCode,
             regionCode = regionCode ?: current.regionCode,
             preferredGenres = resolvedGenres,
             preferredDurations = preferredDurations.mapNotNull { it.toDurationTypeOrNull() },
-            notificationsEnabled = toggles["notificationsEnabled"] ?: current.notificationsEnabled,
-            culturalAlertsEnabled = toggles["culturalAlertsEnabled"] ?: current.culturalAlertsEnabled,
-            autoplayNextEpisode = toggles["autoplayNextEpisode"] ?: current.autoplayNextEpisode,
-            hasCompletedOnboarding = toggles["hasCompletedOnboarding"] ?: current.hasCompletedOnboarding
+            notificationsEnabled = toggles["notificationsEnabled"] as? Boolean
+                ?: current.notificationsEnabled,
+            culturalAlertsEnabled = toggles["culturalAlertsEnabled"] as? Boolean
+                ?: current.culturalAlertsEnabled,
+            autoplayNextEpisode = toggles["autoplayNextEpisode"] as? Boolean
+                ?: current.autoplayNextEpisode,
+            hasCompletedOnboarding = toggles["hasCompletedOnboarding"] as? Boolean
+                ?: current.hasCompletedOnboarding
         )
     }
 
     private suspend fun resolvePreferredGenres(settings: UserSettingsDto): List<Genre> {
-        settings.preferredGenreDetails?.takeIf { it.isNotEmpty() }?.let { details ->
-            return details.map { it.toDomainModel() }
-        }
+        settings.preferredGenreDetails
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { details ->
+                return details.map { it.toDomainModel() }
+            }
 
         val preferredIds = settings.preferredGenres
         if (preferredIds.isEmpty()) return emptyList()
 
         ensureGenresCache()
-        return preferredIds.mapNotNull { genreId -> cachedGenresById[genreId] }
+        return preferredIds.mapNotNull { genreId -> cachedGenresById[genreId]?.toDomainModel() }
     }
 
     private suspend fun ensureGenresCache() {
         if (cachedGenresById.isNotEmpty()) return
+
         val genres = animeApi.getGenres().data
         cachedGenresById = genres.mapNotNull { genre ->
-            genre.id.toIntOrNull()?.let { it to genre }
+            genre.id.toIntOrNull()?.let { id -> id to GenreDto(id = id, name = genre.name) }
         }.toMap()
     }
 
     private fun GenreDto.toDomainModel(): Genre {
-        return Genre(id = id.toString(), name = name)
+        return Genre(
+            id = id.toString(),
+            name = name
+        )
     }
 
     private fun UserSettings.toRequest(): UpdateSettingsRequest {
@@ -196,7 +252,8 @@ class RemoteUserRepositoryImpl(
         preferredDurations = emptyList(),
         favoriteGenres = emptyList(),
         badges = emptyList(),
-        favoriteQuote = null
+        favoriteQuote = null,
+        coverImageUrl = ""
     )
 
     private fun emptyUserSettings(): UserSettings = UserSettings(

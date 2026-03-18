@@ -6,15 +6,26 @@ import retrofit2.http.PUT
 
 data class UserMeDto(
     val id: String,
-    val deviceId: String,
+    val deviceId: String?,
     val email: String?,
     val displayName: String?,
-    val createdAt: String?
+    val avatarUrl: String? = null,
+    val coverImageUrl: String? = null,
+    val createdAt: String?,
+    val completedTrivias: Int? = null,
+    val favoriteCount: Int? = null
 )
 
 data class UpdateProfileRequest(
     val displayName: String? = null,
-    val email: String? = null
+    val email: String? = null,
+    val avatarUrl: String? = null,
+    val coverImageUrl: String? = null
+)
+
+data class GenreDto(
+    val id: Int,
+    val name: String
 )
 
 data class UserSettingsDto(
@@ -25,14 +36,9 @@ data class UserSettingsDto(
     val preferredGenres: List<Int> = emptyList(),
     val preferredGenreDetails: List<GenreDto>? = null,
     val preferredDurations: List<String> = emptyList(),
-    val toggles: Map<String, Boolean> = emptyMap(),
+    val toggles: Map<String, Any?> = emptyMap(),
     val createdAt: String? = null,
     val updatedAt: String? = null
-)
-
-data class GenreDto(
-    val id: Int,
-    val name: String
 )
 
 data class UpdateSettingsRequest(
@@ -41,7 +47,7 @@ data class UpdateSettingsRequest(
     val regionCode: Int? = null,
     val preferredGenres: List<Int>? = null,
     val preferredDurations: List<String>? = null,
-    val toggles: Map<String, Boolean>? = null
+    val toggles: Map<String, Any?>? = null
 )
 
 interface UsersApi {

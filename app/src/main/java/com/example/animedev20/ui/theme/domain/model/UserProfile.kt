@@ -16,7 +16,8 @@ data class UserProfile(
     val preferredDurations: List<DurationType>,
     val favoriteGenres: List<Genre>,
     val badges: List<String>,
-    val favoriteQuote: String? = null
+    val favoriteQuote: String? = null,
+    val coverImageUrl: String = ""
 )
 
 data class UserSettings(
