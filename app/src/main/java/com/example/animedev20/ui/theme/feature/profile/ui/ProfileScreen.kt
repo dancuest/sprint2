@@ -1,19 +1,9 @@
 package com.example.animedev20.ui.theme.feature.profile.ui
 
-import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.ImageDecoder
-import android.net.Uri
-import android.os.Build
-import android.provider.MediaStore
 import android.util.Base64
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
@@ -40,25 +31,22 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -72,12 +60,6 @@ import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.UserProfile
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
-import kotlin.math.max
-import kotlin.math.roundToInt
 
 @Composable
 fun ProfileScreen(
@@ -90,90 +72,23 @@ fun ProfileScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var isProcessingImage by remember { mutableStateOf(false) }
 
-    val avatarPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
+    when {
+        uiState.profile != null -> ProfileContent(
+            profile = uiState.profile!!,
+            favoriteAnimes = uiState.favoriteAnimes,
+            fanLevel = uiState.fanLevel,
+            triviaPlayedCount = uiState.triviaPlayedCount
+        )
 
-        scope.launch {
-            isProcessingImage = true
-            val imageDataUrl = withContext(Dispatchers.IO) {
-                context.uriToCompressedJpegDataUrl(uri)
-            }
+        uiState.isLoading -> ProfileLoadingState()
 
-            if (imageDataUrl == null) {
-                Toast.makeText(
-                    context,
-                    "No se pudo procesar la imagen seleccionada",
-                    Toast.LENGTH_SHORT
-                ).show()
-            } else {
-                viewModel.updateAvatarImage(imageDataUrl)
-            }
+        uiState.errorMessage != null -> ProfileErrorState(
+            message = uiState.errorMessage,
+            onRetry = viewModel::refresh
+        )
 
-            isProcessingImage = false
-        }
-    }
-
-    val coverPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-
-        scope.launch {
-            isProcessingImage = true
-            val imageDataUrl = withContext(Dispatchers.IO) {
-                context.uriToCompressedJpegDataUrl(uri)
-            }
-
-            if (imageDataUrl == null) {
-                Toast.makeText(
-                    context,
-                    "No se pudo procesar la portada seleccionada",
-                    Toast.LENGTH_SHORT
-                ).show()
-            } else {
-                viewModel.updateCoverImage(imageDataUrl)
-            }
-
-            isProcessingImage = false
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        when {
-            uiState.profile != null -> ProfileContent(
-                profile = uiState.profile!!,
-                favoriteAnimes = uiState.favoriteAnimes,
-                fanLevel = uiState.fanLevel,
-                triviaPlayedCount = uiState.triviaPlayedCount,
-                onChangeAvatarClick = { avatarPicker.launch("image/*") },
-                onChangeCoverClick = { coverPicker.launch("image/*") }
-            )
-
-            uiState.isLoading -> ProfileLoadingState()
-
-            uiState.errorMessage != null -> ProfileErrorState(
-                message = uiState.errorMessage,
-                onRetry = viewModel::refresh
-            )
-
-            else -> ProfileEmptyState(onRetry = viewModel::refresh)
-        }
-
-        if (isProcessingImage) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.28f))
-            ) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            }
-        }
+        else -> ProfileEmptyState(onRetry = viewModel::refresh)
     }
 }
 
@@ -204,10 +119,7 @@ private fun ProfileErrorState(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = onRetry) {
-            androidx.compose.material3.Icon(
-                imageVector = Icons.Filled.Refresh,
-                contentDescription = null
-            )
+            Icon(imageVector = Icons.Filled.Refresh, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text(text = "Reintentar")
         }
@@ -242,9 +154,7 @@ private fun ProfileContent(
     profile: UserProfile,
     favoriteAnimes: List<Anime>,
     fanLevel: String,
-    triviaPlayedCount: Int,
-    onChangeAvatarClick: () -> Unit,
-    onChangeCoverClick: () -> Unit
+    triviaPlayedCount: Int
 ) {
     LazyColumn(
         modifier = Modifier
@@ -256,9 +166,7 @@ private fun ProfileContent(
             ProfileHeader(
                 profile = profile,
                 fanLevel = fanLevel,
-                favoriteCount = favoriteAnimes.size,
-                onChangeAvatarClick = onChangeAvatarClick,
-                onChangeCoverClick = onChangeCoverClick
+                favoriteCount = favoriteAnimes.size
             )
         }
 
@@ -341,9 +249,7 @@ private fun ProfileContent(
 private fun ProfileHeader(
     profile: UserProfile,
     fanLevel: String,
-    favoriteCount: Int,
-    onChangeAvatarClick: () -> Unit,
-    onChangeCoverClick: () -> Unit
+    favoriteCount: Int
 ) {
     val displayName = profile.name.ifBlank {
         profile.nickname.ifBlank { "Invitado" }
@@ -372,15 +278,6 @@ private fun ProfileHeader(
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.14f))
             )
-
-            OutlinedButton(
-                onClick = onChangeCoverClick,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(12.dp)
-            ) {
-                Text(text = "Cambiar portada")
-            }
         }
 
         Column(
@@ -393,12 +290,6 @@ private fun ProfileHeader(
                 avatarUrl = profile.avatarUrl,
                 fallbackText = displayName.firstOrNull()?.uppercase() ?: "A"
             )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            OutlinedButton(onClick = onChangeAvatarClick) {
-                Text(text = "Cambiar foto")
-            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -479,8 +370,7 @@ private fun AvatarImage(
         modifier = Modifier
             .size(112.dp)
             .clip(CircleShape)
-            .background(Color.White)
-            .border(width = 4.dp, color = Color.White, shape = CircleShape),
+            .background(Color.White),
         contentAlignment = Alignment.Center
     ) {
         when {
@@ -518,28 +408,29 @@ private fun ProfileStatsRow(
             .padding(horizontal = 16.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        ProfileStatCard(
-            title = "Nivel fan",
-            value = fanLevel,
-            modifier = Modifier.weight(1f)
-        )
+        Box(modifier = Modifier.weight(1f)) {
+            ProfileStatCard(
+                title = "Nivel fan",
+                value = fanLevel
+            )
+        }
 
-        ProfileStatCard(
-            title = "Trivias jugadas",
-            value = triviaPlayedCount.toString(),
-            modifier = Modifier.weight(1f)
-        )
+        Box(modifier = Modifier.weight(1f)) {
+            ProfileStatCard(
+                title = "Trivias jugadas",
+                value = triviaPlayedCount.toString()
+            )
+        }
     }
 }
 
 @Composable
 private fun ProfileStatCard(
     title: String,
-    value: String,
-    modifier: Modifier = Modifier
+    value: String
 ) {
     Card(
-        modifier = modifier,
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         )
@@ -623,43 +514,6 @@ private fun durationPreferenceLabel(durationType: DurationType) = when (duration
     DurationType.LONG -> "Largas"
 }
 
-private fun Context.uriToCompressedJpegDataUrl(uri: Uri): String? {
-    val bitmap = loadBitmapFromUri(uri) ?: return null
-    val scaledBitmap = bitmap.scaleToMaxSide(1200)
-
-    val outputStream = ByteArrayOutputStream()
-    scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 75, outputStream)
-    val bytes = outputStream.toByteArray()
-
-    val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-    return "data:image/jpeg;base64,$base64"
-}
-
-private fun Context.loadBitmapFromUri(uri: Uri): Bitmap? {
-    return try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val source = ImageDecoder.createSource(contentResolver, uri)
-            ImageDecoder.decodeBitmap(source)
-        } else {
-            @Suppress("DEPRECATION")
-            MediaStore.Images.Media.getBitmap(contentResolver, uri)
-        }
-    } catch (_: Exception) {
-        null
-    }
-}
-
-private fun Bitmap.scaleToMaxSide(maxSide: Int): Bitmap {
-    val currentMaxSide = max(width, height)
-    if (currentMaxSide <= maxSide) return this
-
-    val ratio = maxSide.toFloat() / currentMaxSide.toFloat()
-    val newWidth = (width * ratio).roundToInt()
-    val newHeight = (height * ratio).roundToInt()
-
-    return Bitmap.createScaledBitmap(this, newWidth, newHeight, true)
-}
-
 private fun decodeImageBitmapFromDataUrl(dataUrl: String?): ImageBitmap? {
     if (dataUrl.isNullOrBlank()) return null
     if (!dataUrl.startsWith("data:image")) return null
@@ -684,9 +538,7 @@ private fun ProfileScreenPreview() {
                 profile = FakeDataSource.defaultUserProfile,
                 favoriteAnimes = FakeDataSource.recentAnimeHistory,
                 fanLevel = "Muy fan del anime",
-                triviaPlayedCount = 8,
-                onChangeAvatarClick = {},
-                onChangeCoverClick = {}
+                triviaPlayedCount = 8
             )
         }
     }

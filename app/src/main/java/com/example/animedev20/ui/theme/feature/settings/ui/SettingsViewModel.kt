@@ -32,11 +32,17 @@ class SettingsViewModel(
     private fun loadSettings() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+
             runCatching {
                 val settingsDeferred = async { userRepository.getUserSettings() }
                 val profileDeferred = async { userRepository.getUserProfile() }
                 val genresDeferred = async { animeRepository.getGenres() }
-                Triple(settingsDeferred.await(), profileDeferred.await(), genresDeferred.await())
+
+                Triple(
+                    settingsDeferred.await(),
+                    profileDeferred.await(),
+                    genresDeferred.await()
+                )
             }.onSuccess { (settings, profile, genres) ->
                 _uiState.update {
                     it.copy(
@@ -54,6 +60,8 @@ class SettingsViewModel(
                         name = profile.name,
                         email = profile.email,
                         nickname = profile.nickname,
+                        avatarUrl = profile.avatarUrl,
+                        coverImageUrl = profile.coverImageUrl,
                         message = null
                     )
                 }
@@ -85,7 +93,6 @@ class SettingsViewModel(
             state.copy(preferredDurations = updated)
         }
     }
-
 
     fun onAgeRangeSelected(code: Int) {
         _uiState.update { it.copy(ageRange = code) }
@@ -123,12 +130,53 @@ class SettingsViewModel(
         _uiState.update { it.copy(nickname = value) }
     }
 
+    fun onAvatarImageSelected(imageDataUrl: String) {
+        viewModelScope.launch {
+            runCatching {
+                userRepository.updateProfileImages(avatarUrl = imageDataUrl)
+            }.onSuccess { updatedProfile ->
+                _uiState.update {
+                    it.copy(
+                        avatarUrl = updatedProfile.avatarUrl,
+                        coverImageUrl = updatedProfile.coverImageUrl,
+                        message = "Foto de perfil actualizada"
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(message = error.message ?: "No se pudo actualizar la foto de perfil")
+                }
+            }
+        }
+    }
+
+    fun onCoverImageSelected(imageDataUrl: String) {
+        viewModelScope.launch {
+            runCatching {
+                userRepository.updateProfileImages(coverImageUrl = imageDataUrl)
+            }.onSuccess { updatedProfile ->
+                _uiState.update {
+                    it.copy(
+                        avatarUrl = updatedProfile.avatarUrl,
+                        coverImageUrl = updatedProfile.coverImageUrl,
+                        message = "Portada actualizada"
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(message = error.message ?: "No se pudo actualizar la portada")
+                }
+            }
+        }
+    }
+
     fun savePreferences() {
         viewModelScope.launch {
             val state = _uiState.value
             val selectedGenres = state.availableGenres.filter { genre ->
                 state.selectedGenres.contains(genre.id)
             }
+
             runCatching {
                 val currentSettings = userRepository.getUserSettings()
                 val updatedSettings = currentSettings.copy(
@@ -143,24 +191,23 @@ class SettingsViewModel(
                     hasCompletedOnboarding = currentSettings.hasCompletedOnboarding
                 )
                 userRepository.updateUserSettings(updatedSettings)
+            }.onSuccess {
+                homeRefreshBus.trigger()
+                _uiState.update { current ->
+                    current.copy(message = "Preferencias actualizadas")
+                }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(message = error.message)
+                }
             }
-                .onSuccess {
-                    homeRefreshBus.trigger()
-                    _uiState.update { current ->
-                        current.copy(message = "Preferencias actualizadas")
-                    }
-                }
-                .onFailure { error ->
-                    _uiState.update { current ->
-                        current.copy(message = error.message)
-                    }
-                }
         }
     }
 
     fun saveAccountInfo() {
         viewModelScope.launch {
             val state = _uiState.value
+
             runCatching {
                 userRepository.updateAccountInfo(state.name, state.email, state.nickname)
             }.onSuccess { updatedProfile ->
@@ -169,12 +216,16 @@ class SettingsViewModel(
                         message = "Perfil actualizado correctamente",
                         name = updatedProfile.name,
                         email = updatedProfile.email,
-                        nickname = updatedProfile.nickname
+                        nickname = updatedProfile.nickname,
+                        avatarUrl = updatedProfile.avatarUrl,
+                        coverImageUrl = updatedProfile.coverImageUrl
                     )
                 }
             }.onFailure { error ->
                 _uiState.update { current ->
-                    current.copy(message = error.message ?: "Hubo un error al guardar tus datos")
+                    current.copy(
+                        message = error.message ?: "Hubo un error al guardar tus datos"
+                    )
                 }
             }
         }
@@ -193,7 +244,11 @@ class SettingsViewModel(
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
-                    return SettingsViewModel(userRepository, animeRepository, homeRefreshBus) as T
+                    return SettingsViewModel(
+                        userRepository,
+                        animeRepository,
+                        homeRefreshBus
+                    ) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }
@@ -216,5 +271,7 @@ data class SettingsUiState(
     val name: String = "",
     val email: String = "",
     val nickname: String = "",
+    val avatarUrl: String = "",
+    val coverImageUrl: String = "",
     val message: String? = null
 )

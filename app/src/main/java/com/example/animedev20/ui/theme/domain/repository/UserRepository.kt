@@ -6,7 +6,6 @@ import com.example.animedev20.ui.theme.domain.model.UserSettings
 import kotlinx.coroutines.flow.Flow
 
 interface UserRepository {
-
     suspend fun getPreferredGenres(): List<Genre>
 
     suspend fun getUserProfile(): UserProfile
