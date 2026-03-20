@@ -10,6 +10,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.feature.animeinfo.ui.AnimeDetailScreen
+import com.example.animedev20.ui.theme.feature.auth.ui.AuthWelcomeScreen
+import com.example.animedev20.ui.theme.feature.auth.ui.ForgotPasswordScreen
+import com.example.animedev20.ui.theme.feature.auth.ui.LoginScreen
+import com.example.animedev20.ui.theme.feature.auth.ui.RegisterScreen
+import com.example.animedev20.ui.theme.feature.auth.ui.ResetPasswordScreen
 import com.example.animedev20.ui.theme.feature.favorites.ui.FavoritesScreen
 import com.example.animedev20.ui.theme.feature.home.ui.HomeScreen
 import com.example.animedev20.ui.theme.feature.onboarding.ui.OnboardingPreferencesRoute
@@ -30,6 +35,62 @@ fun AppNavHost(
         startDestination = startDestination,
         modifier = modifier
     ) {
+        composable(Screen.AuthWelcome.route) {
+            AuthWelcomeScreen(
+                appContainer = appContainer,
+                onGoToLogin = { navController.navigate(Screen.Login.route) },
+                onGoToRegister = { navController.navigate(Screen.Register.route) },
+                onAuthSuccessRoute = { targetRoute ->
+                    navController.navigate(targetRoute) {
+                        popUpTo(Screen.AuthWelcome.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        composable(Screen.Login.route) {
+            LoginScreen(
+                appContainer = appContainer,
+                onAuthSuccessRoute = { targetRoute ->
+                    navController.navigate(targetRoute) {
+                        popUpTo(Screen.AuthWelcome.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onGoToRegister = { navController.navigate(Screen.Register.route) },
+                onGoToForgotPassword = { navController.navigate(Screen.ForgotPassword.route) }
+            )
+        }
+
+        composable(Screen.Register.route) {
+            RegisterScreen(
+                appContainer = appContainer,
+                onAuthSuccessRoute = { targetRoute ->
+                    navController.navigate(targetRoute) {
+                        popUpTo(Screen.AuthWelcome.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onGoToLogin = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(
+                appContainer = appContainer,
+                onGoToReset = { navController.navigate(Screen.ResetPassword.route) },
+                onGoToLogin = { navController.navigate(Screen.Login.route) }
+            )
+        }
+
+        composable(Screen.ResetPassword.route) {
+            ResetPasswordScreen(
+                appContainer = appContainer,
+                onGoToLogin = { navController.navigate(Screen.Login.route) }
+            )
+        }
+
         composable(Screen.Onboarding.route) {
             OnboardingPreferencesRoute(
                 appContainer = appContainer,

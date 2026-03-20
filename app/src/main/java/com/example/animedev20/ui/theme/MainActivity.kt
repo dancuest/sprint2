@@ -7,18 +7,19 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.compose.material3.CircularProgressIndicator
 import com.example.animedev20.ui.theme.data.DefaultAppContainer
+import com.example.animedev20.ui.theme.data.remote.AuthTokenStore
 import com.example.animedev20.ui.theme.navigation.AppNavHost
 import com.example.animedev20.ui.theme.navigation.BottomNavigationBar
 import com.example.animedev20.ui.theme.navigation.Screen
@@ -41,16 +42,32 @@ fun MainScreen() {
     val navController = rememberNavController()
     val context = LocalContext.current.applicationContext
     val appContainer = remember(context) { DefaultAppContainer(context = context) }
+    val tokenStore = remember(context) { AuthTokenStore(context) }
+
     val startDestination by produceState<String?>(initialValue = null) {
-        val destination = runCatching { appContainer.userRepository.getUserSettings() }
-            .map { settings ->
-                if (settings.hasCompletedOnboarding) Screen.Home.route else Screen.Onboarding.route
+        val destination = if (tokenStore.getToken().isNullOrBlank()) {
+            Screen.AuthWelcome.route
+        } else {
+            runCatching {
+                val settings = appContainer.userRepository.getUserSettings()
+                if (settings.hasCompletedOnboarding) {
+                    Screen.Home.route
+                } else {
+                    Screen.Onboarding.route
+                }
+            }.getOrElse {
+                Screen.AuthWelcome.route
             }
-            .getOrElse { Screen.Home.route }
+        }
+
         value = destination
     }
+
     if (startDestination == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
             CircularProgressIndicator()
         }
     } else {
@@ -61,9 +78,9 @@ fun MainScreen() {
             Screen.Trivia.route,
             Screen.Settings.route,
             Screen.Profile.route -> true
-
             else -> false
         }
+
         Scaffold(
             bottomBar = {
                 if (shouldShowBottomBar) {
