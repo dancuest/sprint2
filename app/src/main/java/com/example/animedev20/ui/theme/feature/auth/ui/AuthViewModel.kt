@@ -40,13 +40,11 @@ class AuthViewModel(
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     fun continueAsGuest() {
-        viewModelScope.launch {
-            executeAuthAction {
-                val deviceId = tokenStore.getOrCreateDeviceId(appContext)
-                val response = authApi.loginDevice(DeviceLoginRequest(deviceId))
-                persistSession(response)
-                navigateToNextRoute()
-            }
+        runAuthAction {
+            val deviceId = tokenStore.createFreshGuestDeviceId()
+            val response = authApi.loginDevice(DeviceLoginRequest(deviceId))
+            persistSession(response)
+            navigateToRoute(Screen.Onboarding.route)
         }
     }
 
@@ -56,17 +54,15 @@ class AuthViewModel(
             return
         }
 
-        viewModelScope.launch {
-            executeAuthAction {
-                val response = authApi.login(
-                    LoginRequest(
-                        email = email.trim(),
-                        password = password
-                    )
+        runAuthAction {
+            val response = authApi.login(
+                LoginRequest(
+                    email = email.trim(),
+                    password = password
                 )
-                persistSession(response)
-                navigateToNextRoute()
-            }
+            )
+            persistSession(response)
+            navigateAccordingToSettings()
         }
     }
 
@@ -80,18 +76,19 @@ class AuthViewModel(
             return
         }
 
-        viewModelScope.launch {
-            executeAuthAction {
-                val response = authApi.register(
-                    RegisterRequest(
-                        email = email.trim(),
-                        password = password,
-                        displayName = displayName.trim().ifBlank { null }
-                    )
+        runAuthAction {
+            ensureGuestSessionForRegistration()
+
+            val response = authApi.register(
+                RegisterRequest(
+                    email = email.trim(),
+                    password = password,
+                    displayName = displayName.trim().ifBlank { null }
                 )
-                persistSession(response)
-                navigateToNextRoute()
-            }
+            )
+
+            persistSession(response)
+            navigateAccordingToSettings()
         }
     }
 
@@ -102,7 +99,12 @@ class AuthViewModel(
         }
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, message = null)
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                message = null,
+                demoResetToken = null,
+                demoResetExpiresAt = null
+            )
 
             runCatching {
                 authApi.forgotPassword(ForgotPasswordRequest(email.trim()))
@@ -133,7 +135,10 @@ class AuthViewModel(
         }
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, message = null)
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                message = null
+            )
 
             runCatching {
                 authApi.resetPassword(
@@ -165,39 +170,14 @@ class AuthViewModel(
         _uiState.value = _uiState.value.copy(nextRoute = null)
     }
 
-    private suspend fun persistSession(response: AuthSessionResponse) {
-        tokenStore.saveToken(response.accessToken)
-        tokenStore.saveUserId(response.userId)
-    }
-
-    private suspend fun navigateToNextRoute() {
-        val next = runCatching {
-            val settings = userRepository.getUserSettings()
-            if (settings.hasCompletedOnboarding) {
-                Screen.Home.route
-            } else {
-                Screen.Onboarding.route
-            }
-        }.getOrElse {
-            Screen.Home.route
-        }
-
-        _uiState.value = _uiState.value.copy(
-            isLoading = false,
-            nextRoute = next,
-            message = null
-        )
-    }
-
-    private fun showMessage(text: String) {
-        _uiState.value = _uiState.value.copy(message = text)
-    }
-
-    private fun executeAuthAction(block: suspend () -> Unit) {
+    private fun runAuthAction(action: suspend () -> Unit) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, message = null)
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                message = null
+            )
 
-            runCatching { block() }
+            runCatching { action() }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -205,6 +185,46 @@ class AuthViewModel(
                     )
                 }
         }
+    }
+
+    private suspend fun ensureGuestSessionForRegistration() {
+        if (!tokenStore.getToken().isNullOrBlank()) return
+
+        val deviceId = tokenStore.createFreshGuestDeviceId()
+        val guestResponse = authApi.loginDevice(DeviceLoginRequest(deviceId))
+        persistSession(guestResponse)
+    }
+
+    private suspend fun persistSession(response: AuthSessionResponse) {
+        tokenStore.saveToken(response.accessToken)
+        tokenStore.saveUserId(response.userId)
+    }
+
+    private suspend fun navigateAccordingToSettings() {
+        val nextRoute = runCatching {
+            val settings = userRepository.getUserSettings()
+            if (settings.hasCompletedOnboarding) {
+                Screen.Home.route
+            } else {
+                Screen.Onboarding.route
+            }
+        }.getOrElse {
+            Screen.Onboarding.route
+        }
+
+        navigateToRoute(nextRoute)
+    }
+
+    private fun navigateToRoute(route: String) {
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            nextRoute = route,
+            message = null
+        )
+    }
+
+    private fun showMessage(text: String) {
+        _uiState.value = _uiState.value.copy(message = text)
     }
 
     companion object {

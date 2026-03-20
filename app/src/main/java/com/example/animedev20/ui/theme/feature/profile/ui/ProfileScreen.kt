@@ -74,6 +74,10 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     when {
+        uiState.profile != null && uiState.profile!!.email.isBlank() -> {
+            GuestProfileBlockedState()
+        }
+
         uiState.profile != null -> ProfileContent(
             profile = uiState.profile!!,
             favoriteAnimes = uiState.favoriteAnimes,
@@ -144,6 +148,35 @@ private fun ProfileEmptyState(onRetry: () -> Unit) {
 
         OutlinedButton(onClick = onRetry) {
             Text(text = "Volver a cargar")
+        }
+    }
+}
+
+@Composable
+private fun GuestProfileBlockedState() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Perfil bloqueado para invitados",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                text = "Para configurar tu foto, portada y datos del perfil, primero inicia sesión o crea una cuenta desde la pantalla de acceso.",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

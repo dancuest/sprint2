@@ -3,6 +3,7 @@ package com.example.animedev20.ui.theme.feature.auth.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -18,8 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -68,7 +69,7 @@ fun RegisterScreen(
         )
 
         Text(
-            text = "Convierte tu sesión actual en una cuenta formal.",
+            text = "Crea una cuenta y guarda tu progreso de forma permanente.",
             style = MaterialTheme.typography.bodyMedium
         )
 
@@ -76,14 +77,14 @@ fun RegisterScreen(
             value = displayName,
             onValueChange = { displayName = it },
             label = { Text("Nombre visible") },
-            modifier = Modifier.fillMaxSize().weight(0f, false)
+            modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Correo") },
-            modifier = Modifier.fillMaxSize().weight(0f, false)
+            modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
@@ -91,7 +92,7 @@ fun RegisterScreen(
             onValueChange = { password = it },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxSize().weight(0f, false)
+            modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
@@ -99,7 +100,7 @@ fun RegisterScreen(
             onValueChange = { confirmPassword = it },
             label = { Text("Confirmar contraseña") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxSize().weight(0f, false)
+            modifier = Modifier.fillMaxWidth()
         )
 
         if (password.isNotBlank() && confirmPassword.isNotBlank() && password != confirmPassword) {
@@ -120,11 +121,10 @@ fun RegisterScreen(
             onClick = {
                 if (password == confirmPassword) {
                     viewModel.register(email, password, displayName)
-                } else {
-                    viewModel.consumeMessage()
                 }
             },
-            enabled = !uiState.isLoading
+            enabled = !uiState.isLoading,
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text("Registrarme")
         }

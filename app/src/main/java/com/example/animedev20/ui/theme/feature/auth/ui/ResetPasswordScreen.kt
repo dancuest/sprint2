@@ -3,6 +3,7 @@ package com.example.animedev20.ui.theme.feature.auth.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -17,8 +18,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -63,14 +64,14 @@ fun ResetPasswordScreen(
             value = email,
             onValueChange = { email = it },
             label = { Text("Correo") },
-            modifier = Modifier.fillMaxSize().weight(0f, false)
+            modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
             value = token,
             onValueChange = { token = it },
             label = { Text("Token") },
-            modifier = Modifier.fillMaxSize().weight(0f, false)
+            modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
@@ -78,7 +79,7 @@ fun ResetPasswordScreen(
             onValueChange = { newPassword = it },
             label = { Text("Nueva contraseña") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxSize().weight(0f, false)
+            modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
@@ -86,7 +87,7 @@ fun ResetPasswordScreen(
             onValueChange = { confirmPassword = it },
             label = { Text("Confirmar nueva contraseña") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxSize().weight(0f, false)
+            modifier = Modifier.fillMaxWidth()
         )
 
         if (newPassword.isNotBlank() && confirmPassword.isNotBlank() && newPassword != confirmPassword) {
@@ -109,7 +110,8 @@ fun ResetPasswordScreen(
                     viewModel.resetPassword(email, token, newPassword)
                 }
             },
-            enabled = !uiState.isLoading
+            enabled = !uiState.isLoading,
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text("Actualizar contraseña")
         }

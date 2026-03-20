@@ -26,9 +26,21 @@ class AuthTokenStore(private val context: Context) {
         return deviceId
     }
 
+    fun createFreshGuestDeviceId(): String {
+        val newDeviceId = "guest-${UUID.randomUUID()}"
+        prefs.edit {
+            putString(KEY_DEVICE_ID, newDeviceId)
+            remove(KEY_TOKEN)
+            remove(KEY_USER_ID)
+        }
+        return newDeviceId
+    }
+
     fun getToken(): String? = prefs.getString(KEY_TOKEN, null)
 
     fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
+
+    fun getDeviceId(): String? = prefs.getString(KEY_DEVICE_ID, null)
 
     fun saveToken(token: String) {
         prefs.edit { putString(KEY_TOKEN, token) }
@@ -36,6 +48,10 @@ class AuthTokenStore(private val context: Context) {
 
     fun saveUserId(userId: String) {
         prefs.edit { putString(KEY_USER_ID, userId) }
+    }
+
+    fun saveDeviceId(deviceId: String) {
+        prefs.edit { putString(KEY_DEVICE_ID, deviceId) }
     }
 
     fun clearSession() {
