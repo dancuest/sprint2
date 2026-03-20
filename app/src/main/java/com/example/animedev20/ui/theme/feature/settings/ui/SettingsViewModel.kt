@@ -3,11 +3,11 @@ package com.example.animedev20.ui.theme.feature.settings.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.animedev20.ui.theme.data.FakeDataSource
-import com.example.animedev20.ui.theme.data.repository.FakeUserRepositoryImpl
+import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.Genre
-import com.example.animedev20.ui.theme.domain.model.UserSettings
+import com.example.animedev20.ui.theme.domain.model.UserDemographicCatalog
+import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +17,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val animeRepository: AnimeRepository,
+    private val homeRefreshBus: HomeRefreshBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -30,19 +32,27 @@ class SettingsViewModel(
     private fun loadSettings() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+
             runCatching {
                 val settingsDeferred = async { userRepository.getUserSettings() }
                 val profileDeferred = async { userRepository.getUserProfile() }
-                val settings = settingsDeferred.await()
-                val profile = profileDeferred.await()
-                settings to profile
-            }.onSuccess { (settings, profile) ->
+                val genresDeferred = async { animeRepository.getGenres() }
+
+                Triple(
+                    settingsDeferred.await(),
+                    profileDeferred.await(),
+                    genresDeferred.await()
+                )
+            }.onSuccess { (settings, profile, genres) ->
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        availableGenres = FakeDataSource.genres,
+                        availableGenres = genres,
                         selectedGenres = settings.preferredGenres.map { genre -> genre.id }.toSet(),
                         preferredDurations = settings.preferredDurations.toSet(),
+                        ageRange = settings.ageRange,
+                        genderCode = settings.genderCode,
+                        regionCode = settings.regionCode,
                         notificationsEnabled = settings.notificationsEnabled,
                         culturalAlertsEnabled = settings.culturalAlertsEnabled,
                         autoplayNextEpisode = settings.autoplayNextEpisode,
@@ -50,6 +60,8 @@ class SettingsViewModel(
                         name = profile.name,
                         email = profile.email,
                         nickname = profile.nickname,
+                        avatarUrl = profile.avatarUrl,
+                        coverImageUrl = profile.coverImageUrl,
                         message = null
                     )
                 }
@@ -82,6 +94,18 @@ class SettingsViewModel(
         }
     }
 
+    fun onAgeRangeSelected(code: Int) {
+        _uiState.update { it.copy(ageRange = code) }
+    }
+
+    fun onGenderSelected(code: Int) {
+        _uiState.update { it.copy(genderCode = code) }
+    }
+
+    fun onRegionSelected(code: Int) {
+        _uiState.update { it.copy(regionCode = code) }
+    }
+
     fun onNotificationsToggled(enabled: Boolean) {
         _uiState.update { it.copy(notificationsEnabled = enabled) }
     }
@@ -106,38 +130,84 @@ class SettingsViewModel(
         _uiState.update { it.copy(nickname = value) }
     }
 
+    fun onAvatarImageSelected(imageDataUrl: String) {
+        viewModelScope.launch {
+            runCatching {
+                userRepository.updateProfileImages(avatarUrl = imageDataUrl)
+            }.onSuccess { updatedProfile ->
+                _uiState.update {
+                    it.copy(
+                        avatarUrl = updatedProfile.avatarUrl,
+                        coverImageUrl = updatedProfile.coverImageUrl,
+                        message = "Foto de perfil actualizada"
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(message = error.message ?: "No se pudo actualizar la foto de perfil")
+                }
+            }
+        }
+    }
+
+    fun onCoverImageSelected(imageDataUrl: String) {
+        viewModelScope.launch {
+            runCatching {
+                userRepository.updateProfileImages(coverImageUrl = imageDataUrl)
+            }.onSuccess { updatedProfile ->
+                _uiState.update {
+                    it.copy(
+                        avatarUrl = updatedProfile.avatarUrl,
+                        coverImageUrl = updatedProfile.coverImageUrl,
+                        message = "Portada actualizada"
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(message = error.message ?: "No se pudo actualizar la portada")
+                }
+            }
+        }
+    }
+
     fun savePreferences() {
         viewModelScope.launch {
             val state = _uiState.value
-            val settings = UserSettings(
-                preferredGenres = FakeDataSource.genres.filter { genre ->
-                    state.selectedGenres.contains(genre.id)
-                },
-                preferredDurations = DurationType.values().filter { duration ->
-                    state.preferredDurations.contains(duration)
-                },
-                notificationsEnabled = state.notificationsEnabled,
-                culturalAlertsEnabled = state.culturalAlertsEnabled,
-                autoplayNextEpisode = state.autoplayNextEpisode,
-                hasCompletedOnboarding = state.hasCompletedOnboarding
-            )
-            runCatching { userRepository.updateUserSettings(settings) }
-                .onSuccess {
-                    _uiState.update { current ->
-                        current.copy(message = "Preferencias actualizadas")
-                    }
+            val selectedGenres = state.availableGenres.filter { genre ->
+                state.selectedGenres.contains(genre.id)
+            }
+
+            runCatching {
+                val currentSettings = userRepository.getUserSettings()
+                val updatedSettings = currentSettings.copy(
+                    ageRange = state.ageRange,
+                    genderCode = state.genderCode,
+                    regionCode = state.regionCode,
+                    preferredGenres = selectedGenres,
+                    preferredDurations = state.preferredDurations.toList(),
+                    notificationsEnabled = state.notificationsEnabled,
+                    culturalAlertsEnabled = state.culturalAlertsEnabled,
+                    autoplayNextEpisode = state.autoplayNextEpisode,
+                    hasCompletedOnboarding = currentSettings.hasCompletedOnboarding
+                )
+                userRepository.updateUserSettings(updatedSettings)
+            }.onSuccess {
+                homeRefreshBus.trigger()
+                _uiState.update { current ->
+                    current.copy(message = "Preferencias actualizadas")
                 }
-                .onFailure { error ->
-                    _uiState.update { current ->
-                        current.copy(message = error.message ?: "No pudimos guardar tus cambios")
-                    }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(message = error.message)
                 }
+            }
         }
     }
 
     fun saveAccountInfo() {
         viewModelScope.launch {
             val state = _uiState.value
+
             runCatching {
                 userRepository.updateAccountInfo(state.name, state.email, state.nickname)
             }.onSuccess { updatedProfile ->
@@ -146,12 +216,16 @@ class SettingsViewModel(
                         message = "Perfil actualizado correctamente",
                         name = updatedProfile.name,
                         email = updatedProfile.email,
-                        nickname = updatedProfile.nickname
+                        nickname = updatedProfile.nickname,
+                        avatarUrl = updatedProfile.avatarUrl,
+                        coverImageUrl = updatedProfile.coverImageUrl
                     )
                 }
             }.onFailure { error ->
                 _uiState.update { current ->
-                    current.copy(message = error.message ?: "Hubo un error al guardar tus datos")
+                    current.copy(
+                        message = error.message ?: "Hubo un error al guardar tus datos"
+                    )
                 }
             }
         }
@@ -162,11 +236,19 @@ class SettingsViewModel(
     }
 
     companion object {
-        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun provideFactory(
+            userRepository: UserRepository,
+            animeRepository: AnimeRepository,
+            homeRefreshBus: HomeRefreshBus
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
-                    return SettingsViewModel(FakeUserRepositoryImpl) as T
+                    return SettingsViewModel(
+                        userRepository,
+                        animeRepository,
+                        homeRefreshBus
+                    ) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }
@@ -178,7 +260,10 @@ data class SettingsUiState(
     val isLoading: Boolean = true,
     val availableGenres: List<Genre> = emptyList(),
     val selectedGenres: Set<String> = emptySet(),
-    val preferredDurations: Set<DurationType> = setOf(DurationType.MEDIUM),
+    val preferredDurations: Set<DurationType> = emptySet(),
+    val ageRange: Int = UserDemographicCatalog.UNSPECIFIED_CODE,
+    val genderCode: Int = UserDemographicCatalog.UNSPECIFIED_CODE,
+    val regionCode: Int = UserDemographicCatalog.UNSPECIFIED_CODE,
     val notificationsEnabled: Boolean = true,
     val culturalAlertsEnabled: Boolean = true,
     val autoplayNextEpisode: Boolean = true,
@@ -186,5 +271,7 @@ data class SettingsUiState(
     val name: String = "",
     val email: String = "",
     val nickname: String = "",
+    val avatarUrl: String = "",
+    val coverImageUrl: String = "",
     val message: String? = null
 )

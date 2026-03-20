@@ -2,6 +2,7 @@ package com.example.animedev20.ui.theme.data.remote
 
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.AnimeDetail
+import com.example.animedev20.ui.theme.domain.model.Genre
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -30,4 +31,12 @@ interface AnimeApi {
 
     @GET("anime/{id}")
     suspend fun getById(@Path("id") id: Long): ApiResponse<Anime>
+
+    @GET("genres")
+    suspend fun getGenres(
+        @Query("includeAdult") includeAdult: Boolean = false
+    ): ApiResponse<List<Genre>>
+
+    @GET("recommendations/adaptive")
+    suspend fun getAdaptiveRecommendations(): ApiResponse<List<Anime>>
 }

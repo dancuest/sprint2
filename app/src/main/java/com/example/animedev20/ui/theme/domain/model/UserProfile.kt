@@ -16,10 +16,14 @@ data class UserProfile(
     val preferredDurations: List<DurationType>,
     val favoriteGenres: List<Genre>,
     val badges: List<String>,
-    val favoriteQuote: String? = null
+    val favoriteQuote: String? = null,
+    val coverImageUrl: String = ""
 )
 
 data class UserSettings(
+    val ageRange: Int = 0,
+    val genderCode: Int = 0,
+    val regionCode: Int = 0,
     val preferredGenres: List<Genre>,
     val preferredDurations: List<DurationType>,
     val notificationsEnabled: Boolean,

@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +20,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,15 +38,25 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.animedev20.ui.theme.data.AppContainer
+import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.AnimeSection
+import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.HomeContent
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
+    appContainer: AppContainer = DefaultAppContainer(),
+    viewModel: HomeViewModel = viewModel(
+        factory = HomeViewModel.provideFactory(
+            appContainer.animeRepository,
+            appContainer.userRepository,
+            appContainer.homeRefreshBus
+        )
+    ),
     onAnimeSelected: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -60,13 +74,16 @@ fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HomeSuccessContent(
     homeContent: HomeContent,
     onAnimeSelected: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val sections = homeContent.sections.filter { it.animes.isNotEmpty() }
+    val sections = homeContent.sections.filter { section ->
+        section.animes.isNotEmpty() || section.genre.id == "recommendations"
+    }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -90,6 +107,9 @@ private fun HomeSuccessContent(
                 anime = homeContent.heroAnime,
                 onAnimeSelected = onAnimeSelected
             )
+        }
+        item {
+            PreferredGenresSection(preferredGenres = homeContent.preferredGenres)
         }
         items(sections, key = { it.genre.id }) { section ->
             AnimeSectionRow(
@@ -160,6 +180,41 @@ private fun HeroRecommendation(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PreferredGenresSection(
+    preferredGenres: List<Genre>,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 20.dp)
+    ) {
+        Text(
+            text = "Tus géneros (${preferredGenres.size})",
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            preferredGenres.forEach { genre ->
+                FilterChip(
+                    selected = true,
+                    onClick = {},
+                    enabled = false,
+                    label = { Text(genre.name) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun AnimeSectionRow(
     section: AnimeSection,
@@ -173,15 +228,24 @@ private fun AnimeSectionRow(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
         Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(section.animes, key = { it.id }) { anime ->
-                AnimeCard(
-                    anime = anime,
-                    onAnimeSelected = onAnimeSelected
-                )
+        if (section.animes.isEmpty()) {
+            Text(
+                text = "No hay recomendaciones disponibles por ahora.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        } else {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(section.animes, key = { it.id }) { anime ->
+                    AnimeCard(
+                        anime = anime,
+                        onAnimeSelected = onAnimeSelected
+                    )
+                }
             }
         }
     }
@@ -262,6 +326,7 @@ private fun HomeSuccessPreview() {
             HomeSuccessContent(
                 homeContent = HomeContent(
                     heroAnime = FakeDataSource.heroAnime,
+                    preferredGenres = FakeDataSource.preferredGenres,
                     sections = FakeDataSource.buildSectionsForGenres(FakeDataSource.preferredGenres)
                 ),
                 onAnimeSelected = {}

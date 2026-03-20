@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,6 +37,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.animedev20.ui.theme.data.AppContainer
+import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaSummary
@@ -41,7 +46,10 @@ import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 
 @Composable
 fun TriviaScreen(
-    viewModel: TriviaViewModel = viewModel(factory = TriviaViewModel.Factory),
+    appContainer: AppContainer = DefaultAppContainer(),
+    viewModel: TriviaViewModel = viewModel(
+        factory = TriviaViewModel.provideFactory(appContainer.triviaRepository)
+    ),
     onPlayTrivia: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -66,7 +74,7 @@ private fun TriviaListContent(
     modifier: Modifier = Modifier
 ) {
     if (summaries.isEmpty()) {
-        TriviaEmptyState(modifier)
+        TriviaEmptyState(modifier = modifier)
         return
     }
 
@@ -79,19 +87,25 @@ private fun TriviaListContent(
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text(
-                    text = "Trivias personalizadas",
+                    text = "Trivias de tus favoritos",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold
                 )
+
                 Text(
-                    text = "Pon a prueba tus conocimientos de cada anime y presume tu puntuación",
+                    text = "Cada anime que marques como favorito desbloquea su propia trivia para que midas qué tan fan eres.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
             Spacer(modifier = Modifier.height(12.dp))
         }
-        items(summaries, key = { it.anime.id }) { summary ->
+
+        items(
+            items = summaries,
+            key = { it.anime.id }
+        ) { summary ->
             TriviaAnimeCard(
                 summary = summary,
                 onPlayTrivia = { onPlayTrivia(summary.anime.id) }
@@ -106,65 +120,127 @@ private fun TriviaAnimeCard(
     onPlayTrivia: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hasBeenPlayed = summary.lastScore != null
+    val buttonLabel = if (hasBeenPlayed) "Volver a jugar" else "Jugar trivia"
+    val bestScoreLabel = "${summary.bestScore}/${summary.totalQuestions}"
+    val lastAttemptLabel = summary.lastScore?.let { score ->
+        "Último intento: $score/${summary.totalQuestions}"
+    } ?: "Aún no has jugado esta trivia"
+
+    val difficultyLabel = summary.lastDifficulty?.displayName ?: "Sin intentos previos"
+
     Card(
         modifier = modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AsyncImage(
-                model = summary.anime.coverImageUrl,
-                contentDescription = "Poster de ${summary.anime.title}",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(100.dp)
-                    .padding(end = 16.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = summary.anime.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AsyncImage(
+                    model = summary.anime.coverImageUrl,
+                    contentDescription = "Poster de ${summary.anime.title}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(96.dp)
                 )
-                Text(
-                    text = summary.anime.synopsis ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                TriviaScoreRow(summary)
+
+                Column(
+                    modifier = Modifier
+                        .padding(start = 16.dp)
+                        .weight(1f)
+                ) {
+                    Text(
+                        text = summary.anime.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Text(
+                        text = summary.anime.synopsis ?: "Este anime ya está listo para su reto de trivia.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
-            Button(onClick = onPlayTrivia) {
-                Text("Jugar")
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        Text(
+                            if (hasBeenPlayed) "Ya jugada" else "Nueva"
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                )
+
+                AssistChip(
+                    onClick = {},
+                    label = { Text("Preguntas: ${summary.totalQuestions}") }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            TriviaMetricRow(
+                title = "Mejor puntaje",
+                value = bestScoreLabel
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            TriviaMetricRow(
+                title = "Última dificultad",
+                value = difficultyLabel
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            TriviaMetricRow(
+                title = "Estado",
+                value = lastAttemptLabel
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Button(
+                onClick = onPlayTrivia,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = buttonLabel)
             }
         }
     }
 }
 
 @Composable
-private fun TriviaScoreRow(summary: TriviaSummary) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        val lastScoreText = summary.lastScore?.let { score ->
-            val difficulty = summary.lastDifficulty?.displayName ?: ""
-            "Último intento: $score/${summary.totalQuestions} $difficulty"
-        } ?: "Aún no has jugado"
+private fun TriviaMetricRow(
+    title: String,
+    value: String
+) {
+    Column {
         Text(
-            text = lastScoreText,
-            style = MaterialTheme.typography.labelMedium
-        )
-        Text(
-            text = "Mejor puntaje: ${summary.bestScore}/${summary.totalQuestions}",
+            text = title,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
         )
     }
 }
@@ -188,9 +264,16 @@ private fun TriviaErrorState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = message, textAlign = TextAlign.Center)
+        Text(
+            text = message,
+            textAlign = TextAlign.Center
+        )
+
         Spacer(modifier = Modifier.height(12.dp))
-        Button(onClick = onRetry) { Text("Reintentar") }
+
+        Button(onClick = onRetry) {
+            Text("Reintentar")
+        }
     }
 }
 
@@ -207,11 +290,14 @@ private fun TriviaEmptyState(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "No hay trivias disponibles",
-                style = MaterialTheme.typography.titleMedium
+                text = "No tienes trivias desbloqueadas",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
             )
+
             Text(
-                text = "Cuando añadamos más animes verás sus retos culturales aquí",
+                text = "Añade animes a favoritos para desbloquear sus trivias y empezar a jugar.",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -241,21 +327,10 @@ private fun TriviaCardPreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun TriviaListPreview() {
+private fun TriviaEmptyPreview() {
     AnimeDevTheme {
         Surface {
-            TriviaListContent(
-                summaries = FakeDataSource.animeCatalog.mapIndexed { index, anime ->
-                    TriviaSummary(
-                        anime = anime,
-                        lastScore = if (index % 2 == 0) 2 else null,
-                        totalQuestions = 3,
-                        lastDifficulty = if (index % 2 == 0) TriviaDifficulty.MEDIUM else null,
-                        bestScore = if (index % 2 == 0) 3 else 0
-                    )
-                },
-                onPlayTrivia = {}
-            )
+            TriviaEmptyState()
         }
     }
 }

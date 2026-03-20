@@ -1,33 +1,102 @@
 package com.example.animedev20.ui.theme.domain.usecase
 
+import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.AnimeSection
+import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.HomeContent
 import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 
 class GetHomeContentUseCase(
     private val animeRepository: AnimeRepository,
     private val userRepository: UserRepository
 ) {
-    suspend operator fun invoke(): Result<HomeContent> = runCatching {
-        coroutineScope {
-            val heroAnimeDeferred = async { animeRepository.getHeroRecommendation() }
 
-            val preferredGenres = userRepository.getPreferredGenres()
+    private companion object {
+        private const val THROTTLE_MS = 250L
+        private const val TARGET_SECTION_SIZE = 10
+        private const val MAX_REPEAT_PER_SECTION = 2
+    }
 
-            val sectionsDeferred = preferredGenres.map { genre ->
-                async {
-                    val animes = animeRepository.getAnimesByGenre(genre.id)
-                    AnimeSection(genre = genre, animes = animes)
-                }
-            }
+    suspend operator fun invoke(): Result<HomeContent> = try {
 
-            HomeContent(
-                heroAnime = heroAnimeDeferred.await(),
-                sections = sectionsDeferred.map { it.await() }
+        // HERO (protegido contra fallo de API)
+        val heroAnime = runCatching {
+            animeRepository.getHeroRecommendation()
+        }.getOrNull() ?: throw Exception("No se pudo cargar el contenido principal.")
+
+        val preferredGenres = runCatching {
+            userRepository.getPreferredGenres()
+        }.getOrElse { emptyList() }
+
+        val usedAnimeIds = linkedSetOf<Long>()
+
+        usedAnimeIds += heroAnime.id
+
+        val sections = mutableListOf<AnimeSection>()
+
+        // RECOMENDACIONES ADAPTATIVAS
+        val recommendationCandidates = runCatching {
+            animeRepository.getAdaptiveRecommendations()
+        }.getOrElse { emptyList() }
+
+        val recommendationList = recommendationCandidates
+            .filterNot { it.id in usedAnimeIds }
+            .take(TARGET_SECTION_SIZE)
+
+        if (recommendationList.isNotEmpty()) {
+            usedAnimeIds += recommendationList.map { it.id }
+
+            sections += AnimeSection(
+                genre = Genre("recommendations", "Para Ti"),
+                animes = recommendationList
             )
         }
+
+        // SECCIONES POR GENERO
+        for ((index, genre) in preferredGenres.withIndex()) {
+
+            val candidates = runCatching {
+                animeRepository.getAnimesByGenre(genre.id)
+            }.getOrElse { emptyList() }
+
+            val uniqueItems = candidates
+                .filterNot { it.id in usedAnimeIds }
+                .take(TARGET_SECTION_SIZE)
+                .toMutableList()
+
+            if (uniqueItems.size < TARGET_SECTION_SIZE) {
+
+                val repeats = candidates
+                    .filterNot { anime -> uniqueItems.any { it.id == anime.id } }
+                    .take(MAX_REPEAT_PER_SECTION)
+
+                uniqueItems += repeats
+            }
+
+            if (uniqueItems.isNotEmpty()) {
+                usedAnimeIds += uniqueItems.map { it.id }
+                sections += AnimeSection(
+                    genre = genre,
+                    animes = uniqueItems
+                )
+            }
+
+            if (index != preferredGenres.lastIndex) {
+                delay(THROTTLE_MS)
+            }
+        }
+
+        Result.success(
+            HomeContent(
+                heroAnime = heroAnime,
+                preferredGenres = preferredGenres,
+                sections = sections
+            )
+        )
+
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 }

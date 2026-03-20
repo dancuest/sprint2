@@ -4,16 +4,29 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -22,6 +35,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -41,10 +55,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.animedev20.ui.theme.data.AppContainer
+import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
@@ -58,7 +75,14 @@ fun TriviaPlayScreen(
     onBack: () -> Unit,
     onGoToHome: () -> Unit,
     onGoToTrivia: () -> Unit,
-    viewModel: TriviaPlayViewModel = viewModel(factory = TriviaPlayViewModel.provideFactory(animeId))
+    appContainer: AppContainer = DefaultAppContainer(),
+    viewModel: TriviaPlayViewModel = viewModel(
+        factory = TriviaPlayViewModel.provideFactory(
+            animeId = animeId,
+            animeRepository = appContainer.animeRepository,
+            triviaRepository = appContainer.triviaRepository
+        )
+    )
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -70,7 +94,10 @@ fun TriviaPlayScreen(
                 title = { Text("Trivia") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -83,6 +110,7 @@ fun TriviaPlayScreen(
                     .padding(innerPadding)
                     .fillMaxSize()
             )
+
             is TriviaPlayUiState.Error -> TriviaPlayError(
                 message = state.message,
                 onRetry = viewModel::tryAgain,
@@ -90,6 +118,7 @@ fun TriviaPlayScreen(
                     .padding(innerPadding)
                     .fillMaxSize()
             )
+
             is TriviaPlayUiState.Success -> TriviaPlayContent(
                 state = state.state,
                 onDifficultySelected = viewModel::selectDifficulty,
@@ -118,26 +147,32 @@ private fun TriviaPlayContent(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+
     Column(
         modifier = modifier
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(scrollState)
+            .navigationBarsPadding()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         AnimeTriviaHeader(anime = state.anime)
+
         DifficultySelector(
             selectedDifficulty = state.difficulty,
             onDifficultySelected = onDifficultySelected
         )
+
         when {
             state.questions.isEmpty() -> TriviaInstructions()
+
             state.finished -> TriviaResultCard(
                 state = state,
                 onRestart = onRestart,
                 onGoToHome = onGoToHome,
                 onGoToTrivia = onGoToTrivia
             )
+
             else -> TriviaQuestionCard(
                 state = state,
                 onAnswer = onAnswer,
@@ -153,37 +188,57 @@ private fun AnimeTriviaHeader(anime: Anime) {
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge
     ) {
-        Box(modifier = Modifier.height(220.dp)) {
+        Box(modifier = Modifier.height(230.dp)) {
             AsyncImage(
                 model = anime.coverImageUrl,
                 contentDescription = "Portada de ${anime.title}",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.75f)
+                            )
                         )
                     )
             )
+
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(16.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
                     text = anime.title,
                     style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
                 )
+
                 Text(
                     text = anime.genres.joinToString { it.name },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f)
+                    color = Color.White.copy(alpha = 0.88f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
+
+                anime.synopsis?.takeIf { it.isNotBlank() }?.let { synopsis ->
+                    Text(
+                        text = synopsis,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.82f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
@@ -195,14 +250,22 @@ private fun DifficultySelector(
     selectedDifficulty: TriviaDifficulty?,
     onDifficultySelected: (TriviaDifficulty) -> Unit
 ) {
-    Column {
-        Text(
-            text = "Elige la dificultad",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Elige la dificultad",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+
             TriviaDifficulty.entries.forEach { difficulty ->
                 FilterChip(
                     selected = selectedDifficulty == difficulty,
@@ -219,9 +282,14 @@ private fun DifficultySelector(
                     },
                     leadingIcon = if (selectedDifficulty == difficulty) {
                         {
-                            Icon(Icons.Default.Check, contentDescription = null)
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null
+                            )
                         }
-                    } else null
+                    } else {
+                        null
+                    }
                 )
             }
         }
@@ -232,20 +300,35 @@ private fun DifficultySelector(
 private fun TriviaInstructions() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
                 text = "¿Listo para jugar?",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
             )
+
             Text(
-                text = "Selecciona una dificultad para desbloquear una trivia cultural con 3 preguntas.",
+                text = "Selecciona una dificultad para empezar: fácil tiene 3 preguntas, media 5 y difícil 8.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            AssistChip(
+                onClick = {},
+                label = { Text("Tip: cada intento queda registrado en tu historial") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.EmojiEvents,
+                        contentDescription = null
+                    )
+                }
             )
         }
     }
@@ -258,64 +341,136 @@ private fun TriviaQuestionCard(
     onNext: () -> Unit
 ) {
     val question = state.currentQuestion ?: return
+    val progress = if (state.totalQuestions == 0) 0f
+    else (state.currentIndex + 1).toFloat() / state.totalQuestions.toFloat()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                text = "Pregunta ${state.currentIndex + 1} de ${state.totalQuestions}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = question.question,
-                style = MaterialTheme.typography.titleMedium
-            )
-            question.options.forEachIndexed { index, option ->
-                TriviaAnswerOption(
-                    text = option,
-                    selected = state.selectedAnswer == index,
-                    isCorrect = state.selectedAnswer != null && index == question.correctAnswerIndex,
-                    isIncorrect = state.selectedAnswer == index && index != question.correctAnswerIndex,
-                    enabled = state.selectedAnswer == null,
-                    onClick = { onAnswer(index) }
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        Text(
+                            text = state.difficulty?.displayName ?: "Trivia"
+                        )
+                    }
+                )
+
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        Text(
+                            text = "Score: ${state.score}/${state.totalQuestions}"
+                        )
+                    }
                 )
             }
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Pregunta ${state.currentIndex + 1} de ${state.totalQuestions}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Text(
+                text = question.question,
+                style = MaterialTheme.typography.headlineSmall
+            )
+
+            QuestionFeedbackHint(question = question)
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                question.options.forEachIndexed { index, option ->
+                    TriviaAnswerOption(
+                        optionIndex = index,
+                        text = option,
+                        selected = state.selectedAnswer == index,
+                        isCorrect = state.selectedAnswer != null && index == question.correctAnswerIndex,
+                        isIncorrect = state.selectedAnswer == index && index != question.correctAnswerIndex,
+                        enabled = state.selectedAnswer == null,
+                        onClick = { onAnswer(index) }
+                    )
+                }
+            }
+
             if (state.selectedAnswer != null) {
                 val correct = state.isAnswerCorrect == true
-                val feedbackText = if (correct) {
-                    "¡Correcto! ${question.feedback}"
-                } else {
-                    "Respuesta incorrecta. ${question.feedback}"
+
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (correct) {
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.errorContainer
+                        }
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = if (correct) "¡Respuesta correcta!" else "Respuesta incorrecta",
+                            fontWeight = FontWeight.Bold,
+                            color = if (correct) {
+                                MaterialTheme.colorScheme.onTertiaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onErrorContainer
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = question.feedback,
+                            color = if (correct) {
+                                MaterialTheme.colorScheme.onTertiaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onErrorContainer
+                            }
+                        )
+                    }
                 }
-                Text(
-                    text = feedbackText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (correct) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                )
+
                 val isLast = state.currentIndex >= state.totalQuestions - 1
+
                 Button(
                     onClick = onNext,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (isLast) "Finalizar" else "Siguiente pregunta")
+                    Text(if (isLast) "Finalizar trivia" else "Siguiente pregunta")
                 }
             }
         }
     }
-    Spacer(modifier = Modifier.height(12.dp))
+}
+
+@Composable
+private fun QuestionFeedbackHint(question: TriviaQuestion) {
     Text(
-        text = "Puntuación actual: ${state.score}/${state.totalQuestions}",
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.fillMaxWidth(),
-        textAlign = TextAlign.Center
+        text = "Analiza bien las opciones antes de responder.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun TriviaAnswerOption(
+    optionIndex: Int,
     text: String,
     selected: Boolean,
     isCorrect: Boolean,
@@ -326,25 +481,55 @@ private fun TriviaAnswerOption(
     val containerColor = when {
         isCorrect -> MaterialTheme.colorScheme.tertiaryContainer
         isIncorrect -> MaterialTheme.colorScheme.errorContainer
+        selected -> MaterialTheme.colorScheme.secondaryContainer
         else -> MaterialTheme.colorScheme.surface
     }
+
     val contentColor = when {
         isCorrect -> MaterialTheme.colorScheme.onTertiaryContainer
         isIncorrect -> MaterialTheme.colorScheme.onErrorContainer
+        selected -> MaterialTheme.colorScheme.onSecondaryContainer
         else -> MaterialTheme.colorScheme.onSurface
     }
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
-        onClick = { if (enabled) onClick() }
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        onClick = {
+            if (enabled) onClick()
+        }
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(12.dp)
-        )
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .background(
+                        color = contentColor.copy(alpha = 0.14f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = ('A' + optionIndex).toString(),
+                    fontWeight = FontWeight.Bold,
+                    color = contentColor
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = contentColor
+            )
+        }
     }
 }
 
@@ -355,40 +540,113 @@ private fun TriviaResultCard(
     onGoToHome: () -> Unit,
     onGoToTrivia: () -> Unit
 ) {
+    val resultMessage = buildResultMessage(
+        score = state.score,
+        totalQuestions = state.totalQuestions
+    )
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.EmojiEvents,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+
             Text(
                 text = "Resultado final",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold
             )
+
             Text(
                 text = "${state.score} de ${state.totalQuestions} respuestas correctas",
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center
             )
+
             Text(
-                text = "Tu puntuación se ha guardado para este anime",
+                text = resultMessage,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
-            Button(onClick = onGoToHome, modifier = Modifier.fillMaxWidth()) {
+
+            AssistChip(
+                onClick = {},
+                label = {
+                    Text(
+                        text = "Dificultad jugada: ${state.difficulty?.displayName ?: "Trivia"}"
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.SportsEsports,
+                        contentDescription = null
+                    )
+                }
+            )
+
+            Button(
+                onClick = onGoToHome,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Home,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text("Volver al Home")
             }
-            OutlinedButton(onClick = onGoToTrivia, modifier = Modifier.fillMaxWidth()) {
+
+            OutlinedButton(
+                onClick = onGoToTrivia,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Ir a trivias")
             }
+
             TextButton(onClick = onRestart) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(6.dp))
                 Text("Jugar de nuevo")
             }
         }
+    }
+}
+
+private fun buildResultMessage(score: Int, totalQuestions: Int): String {
+    if (totalQuestions == 0) return "Tu resultado se ha guardado para este anime."
+
+    val ratio = score.toFloat() / totalQuestions.toFloat()
+
+    return when {
+        ratio == 1f -> "Rendimiento perfecto. Se nota que este anime está en tu radar premium."
+        ratio >= 0.67f -> "Muy buen resultado. Vas consolidando tu dominio sobre este favorito."
+        ratio >= 0.34f -> "Buen intento. Tienes la base, pero aún hay detalles por afinar."
+        else -> "Esta trivia te dejó tarea. Vuelve a intentarlo y mejora tu marca."
     }
 }
 
@@ -406,9 +664,18 @@ private fun TriviaPlayError(
     modifier: Modifier = Modifier
 ) {
     BoxWithCenteredContent(modifier) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = message, textAlign = TextAlign.Center)
-            Button(onClick = onRetry) { Text("Reintentar") }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = message,
+                textAlign = TextAlign.Center
+            )
+
+            Button(onClick = onRetry) {
+                Text("Reintentar")
+            }
         }
     }
 }

@@ -3,9 +3,9 @@ package com.example.animedev20.ui.theme.feature.animeinfo.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.animedev20.ui.theme.data.repository.FakeAnimeRepositoryImpl
-import com.example.animedev20.ui.theme.data.repository.FakeFavoritesRepositoryImpl
+import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.FavoritesRepository
+import com.example.animedev20.ui.theme.domain.repository.InteractionRepository
 import com.example.animedev20.ui.theme.domain.usecase.GetAnimeDetailUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,13 +15,15 @@ import kotlinx.coroutines.launch
 class AnimeDetailViewModel(
     private val animeId: Long,
     private val getAnimeDetailUseCase: GetAnimeDetailUseCase,
-    private val favoritesRepository: FavoritesRepository
+    private val favoritesRepository: FavoritesRepository,
+    private val interactionRepository: InteractionRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AnimeDetailUiState>(AnimeDetailUiState.Loading)
     val uiState: StateFlow<AnimeDetailUiState> = _uiState.asStateFlow()
 
     private var latestFavoriteState: Boolean = false
+    private var hasTrackedView: Boolean = false
 
     init {
         observeFavoriteStatus()
@@ -35,6 +37,10 @@ class AnimeDetailViewModel(
             result.fold(
                 onSuccess = { detail ->
                     _uiState.value = AnimeDetailUiState.Success(detail, latestFavoriteState)
+                    if (!hasTrackedView) {
+                        interactionRepository.trackView(detail.anime.id)
+                        hasTrackedView = true
+                    }
                 },
                 onFailure = { throwable ->
                     _uiState.value = AnimeDetailUiState.Error(
@@ -67,16 +73,21 @@ class AnimeDetailViewModel(
     }
 
     companion object {
-        fun provideFactory(animeId: Long): ViewModelProvider.Factory =
+        fun provideFactory(
+            animeId: Long,
+            animeRepository: AnimeRepository,
+            favoritesRepository: FavoritesRepository,
+            interactionRepository: InteractionRepository
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    val repository = FakeAnimeRepositoryImpl()
-                    val useCase = GetAnimeDetailUseCase(repository)
+                    val useCase = GetAnimeDetailUseCase(animeRepository)
                     return AnimeDetailViewModel(
                         animeId = animeId,
                         getAnimeDetailUseCase = useCase,
-                        favoritesRepository = FakeFavoritesRepositoryImpl
+                        favoritesRepository = favoritesRepository,
+                        interactionRepository = interactionRepository
                     ) as T
                 }
             }
