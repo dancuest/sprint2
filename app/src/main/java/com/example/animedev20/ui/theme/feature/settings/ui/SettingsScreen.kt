@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -70,6 +71,7 @@ import coil.compose.AsyncImage
 import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
+import com.example.animedev20.ui.theme.data.remote.AuthTokenStore
 import com.example.animedev20.ui.theme.domain.model.CodedOption
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.UserDemographicCatalog
@@ -85,6 +87,7 @@ import kotlin.math.roundToInt
 @Composable
 fun SettingsScreen(
     appContainer: AppContainer = DefaultAppContainer(),
+    onLogoutRequest: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel(
         factory = SettingsViewModel.provideFactory(
             userRepository = appContainer.userRepository,
@@ -96,6 +99,7 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val tokenStore = remember { AuthTokenStore(context.applicationContext) }
     val scope = rememberCoroutineScope()
     var isProcessingImage by remember { mutableStateOf(false) }
 
@@ -113,6 +117,7 @@ fun SettingsScreen(
             if (imageDataUrl != null) {
                 viewModel.onAvatarImageSelected(imageDataUrl)
             }
+
             isProcessingImage = false
         }
     }
@@ -131,6 +136,7 @@ fun SettingsScreen(
             if (imageDataUrl != null) {
                 viewModel.onCoverImageSelected(imageDataUrl)
             }
+
             isProcessingImage = false
         }
     }
@@ -166,7 +172,11 @@ fun SettingsScreen(
                     onEmailChange = viewModel::onEmailChanged,
                     onNicknameChange = viewModel::onNicknameChanged,
                     onPickAvatar = { avatarPicker.launch("image/*") },
-                    onPickCover = { coverPicker.launch("image/*") }
+                    onPickCover = { coverPicker.launch("image/*") },
+                    onLogout = {
+                        tokenStore.clearAll()
+                        onLogoutRequest()
+                    }
                 )
             }
 
@@ -198,7 +208,8 @@ private fun SettingsContent(
     onEmailChange: (String) -> Unit,
     onNicknameChange: (String) -> Unit,
     onPickAvatar: () -> Unit,
-    onPickCover: () -> Unit
+    onPickCover: () -> Unit,
+    onLogout: () -> Unit
 ) {
     var genreQuery by rememberSaveable { mutableStateOf("") }
 
@@ -384,6 +395,23 @@ private fun SettingsContent(
                 ) {
                     Text("Actualizar datos de perfil")
                 }
+            }
+        }
+
+        item {
+            SettingSectionTitle(title = "Sesión")
+
+            Button(
+                onClick = onLogout,
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Text("Cerrar sesión")
             }
         }
     }
@@ -735,7 +763,8 @@ private fun SettingsContentPreview() {
             onEmailChange = {},
             onNicknameChange = {},
             onPickAvatar = {},
-            onPickCover = {}
+            onPickCover = {},
+            onLogout = {}
         )
     }
 }

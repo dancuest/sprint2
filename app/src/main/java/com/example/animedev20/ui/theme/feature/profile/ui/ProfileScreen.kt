@@ -64,6 +64,8 @@ import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 @Composable
 fun ProfileScreen(
     appContainer: AppContainer = DefaultAppContainer(),
+    onGoToLogin: () -> Unit = {},
+    onGoToRegister: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModel.provideFactory(
             userRepository = appContainer.userRepository,
@@ -75,7 +77,10 @@ fun ProfileScreen(
 
     when {
         uiState.profile != null && uiState.profile!!.email.isBlank() -> {
-            GuestProfileBlockedState()
+            GuestProfileBlockedState(
+                onGoToLogin = onGoToLogin,
+                onGoToRegister = onGoToRegister
+            )
         }
 
         uiState.profile != null -> ProfileContent(
@@ -153,7 +158,10 @@ private fun ProfileEmptyState(onRetry: () -> Unit) {
 }
 
 @Composable
-private fun GuestProfileBlockedState() {
+private fun GuestProfileBlockedState(
+    onGoToLogin: () -> Unit,
+    onGoToRegister: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -172,11 +180,25 @@ private fun GuestProfileBlockedState() {
             )
 
             Text(
-                text = "Para configurar tu foto, portada y datos del perfil, primero inicia sesión o crea una cuenta desde la pantalla de acceso.",
+                text = "Para configurar tu foto, portada y datos del perfil, primero inicia sesión o crea una cuenta.",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            Button(
+                onClick = onGoToLogin,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Iniciar sesión")
+            }
+
+            OutlinedButton(
+                onClick = onGoToRegister,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Registrarme")
+            }
         }
     }
 }

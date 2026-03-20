@@ -117,7 +117,9 @@ fun AppNavHost(
                 appContainer = appContainer,
                 onAnimeSelected = { animeId ->
                     navController.navigate(Screen.AnimeDetail.createRoute(animeId))
-                }
+                },
+                onGoToLogin = { navController.navigate(Screen.Login.route) },
+                onGoToRegister = { navController.navigate(Screen.Register.route) }
             )
         }
 
@@ -126,16 +128,30 @@ fun AppNavHost(
                 appContainer = appContainer,
                 onPlayTrivia = { animeId ->
                     navController.navigate(Screen.TriviaPlay.createRoute(animeId))
-                }
+                },
+                onGoToLogin = { navController.navigate(Screen.Login.route) },
+                onGoToRegister = { navController.navigate(Screen.Register.route) }
             )
         }
 
         composable(Screen.Settings.route) {
-            SettingsScreen(appContainer = appContainer)
+            SettingsScreen(
+                appContainer = appContainer,
+                onLogoutRequest = {
+                    navController.navigate(Screen.AuthWelcome.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            )
         }
 
         composable(Screen.Profile.route) {
-            ProfileScreen(appContainer = appContainer)
+            ProfileScreen(
+                appContainer = appContainer,
+                onGoToLogin = { navController.navigate(Screen.Login.route) },
+                onGoToRegister = { navController.navigate(Screen.Register.route) }
+            )
         }
 
         composable(
