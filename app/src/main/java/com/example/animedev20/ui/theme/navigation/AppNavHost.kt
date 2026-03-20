@@ -12,11 +12,11 @@ import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.feature.animeinfo.ui.AnimeDetailScreen
 import com.example.animedev20.ui.theme.feature.favorites.ui.FavoritesScreen
 import com.example.animedev20.ui.theme.feature.home.ui.HomeScreen
+import com.example.animedev20.ui.theme.feature.onboarding.ui.OnboardingPreferencesRoute
 import com.example.animedev20.ui.theme.feature.profile.ui.ProfileScreen
 import com.example.animedev20.ui.theme.feature.settings.ui.SettingsScreen
 import com.example.animedev20.ui.theme.feature.trivia.ui.TriviaPlayScreen
 import com.example.animedev20.ui.theme.feature.trivia.ui.TriviaScreen
-import com.example.animedev20.ui.theme.feature.onboarding.ui.OnboardingPreferencesRoute
 
 @Composable
 fun AppNavHost(
@@ -41,6 +41,7 @@ fun AppNavHost(
                 }
             )
         }
+
         composable(Screen.Home.route) {
             HomeScreen(
                 appContainer = appContainer,
@@ -49,6 +50,7 @@ fun AppNavHost(
                 }
             )
         }
+
         composable(Screen.Favorites.route) {
             FavoritesScreen(
                 appContainer = appContainer,
@@ -57,6 +59,7 @@ fun AppNavHost(
                 }
             )
         }
+
         composable(Screen.Trivia.route) {
             TriviaScreen(
                 appContainer = appContainer,
@@ -65,13 +68,23 @@ fun AppNavHost(
                 }
             )
         }
-        composable(Screen.Settings.route) { SettingsScreen(appContainer = appContainer) }
-        composable(Screen.Profile.route) { ProfileScreen(appContainer = appContainer) }
+
+        composable(Screen.Settings.route) {
+            SettingsScreen(appContainer = appContainer)
+        }
+
+        composable(Screen.Profile.route) {
+            ProfileScreen(appContainer = appContainer)
+        }
+
         composable(
             route = Screen.AnimeDetail.route,
-            arguments = listOf(navArgument("animeId") { type = NavType.LongType })
+            arguments = listOf(
+                navArgument("animeId") { type = NavType.LongType }
+            )
         ) { backStackEntry ->
             val animeId = backStackEntry.arguments?.getLong("animeId") ?: return@composable
+
             AnimeDetailScreen(
                 animeId = animeId,
                 appContainer = appContainer,
@@ -81,11 +94,15 @@ fun AppNavHost(
                 }
             )
         }
+
         composable(
             route = Screen.TriviaPlay.route,
-            arguments = listOf(navArgument("animeId") { type = NavType.LongType })
+            arguments = listOf(
+                navArgument("animeId") { type = NavType.LongType }
+            )
         ) { backStackEntry ->
             val animeId = backStackEntry.arguments?.getLong("animeId") ?: return@composable
+
             TriviaPlayScreen(
                 animeId = animeId,
                 appContainer = appContainer,
@@ -100,12 +117,19 @@ fun AppNavHost(
                     }
                 },
                 onGoToTrivia = {
-                    navController.navigate(Screen.Trivia.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
+                    val returnedToTrivia = navController.popBackStack(
+                        Screen.Trivia.route,
+                        false
+                    )
+
+                    if (!returnedToTrivia) {
+                        navController.navigate(Screen.Trivia.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
                     }
                 }
             )
