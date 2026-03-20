@@ -53,7 +53,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.provideFactory(
             appContainer.animeRepository,
-            appContainer.userRepository
+            appContainer.userRepository,
+            appContainer.homeRefreshBus
         )
     ),
     onAnimeSelected: (Long) -> Unit
@@ -80,7 +81,9 @@ private fun HomeSuccessContent(
     onAnimeSelected: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val sections = homeContent.sections.filter { it.animes.isNotEmpty() }
+    val sections = homeContent.sections.filter { section ->
+        section.animes.isNotEmpty() || section.genre.id == "recommendations"
+    }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -225,15 +228,24 @@ private fun AnimeSectionRow(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
         Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(section.animes, key = { it.id }) { anime ->
-                AnimeCard(
-                    anime = anime,
-                    onAnimeSelected = onAnimeSelected
-                )
+        if (section.animes.isEmpty()) {
+            Text(
+                text = "No hay recomendaciones disponibles por ahora.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        } else {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(section.animes, key = { it.id }) { anime ->
+                    AnimeCard(
+                        anime = anime,
+                        onAnimeSelected = onAnimeSelected
+                    )
+                }
             }
         }
     }

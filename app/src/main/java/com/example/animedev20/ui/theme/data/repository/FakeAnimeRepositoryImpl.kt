@@ -39,4 +39,9 @@ class FakeAnimeRepositoryImpl : AnimeRepository {
         delay(300)
         return FakeDataSource.genres
     }
+
+    override suspend fun getAdaptiveRecommendations(): List<Anime> {
+        delay(500)
+        return FakeDataSource.animeCatalog.take(5)
+    }
 }

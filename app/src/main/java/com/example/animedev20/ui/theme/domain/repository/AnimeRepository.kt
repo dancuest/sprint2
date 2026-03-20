@@ -10,4 +10,5 @@ interface AnimeRepository {
     suspend fun getAnimeDetail(animeId: Long): AnimeDetail
     suspend fun searchAnime(query: String): List<Anime>
     suspend fun getGenres(): List<Genre>
+    suspend fun getAdaptiveRecommendations(): List<Anime>
 }

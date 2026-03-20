@@ -118,6 +118,9 @@ object FakeDataSource {
     val preferredGenres: List<Genre> = listOf(shonen, aventura, seinen)
 
     val defaultUserSettings = UserSettings(
+        ageRange = 0,
+        genderCode = 0,
+        regionCode = 0,
         preferredGenres = preferredGenres,
         preferredDurations = listOf(DurationType.MEDIUM),
         notificationsEnabled = true,

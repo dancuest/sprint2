@@ -36,4 +36,7 @@ interface AnimeApi {
     suspend fun getGenres(
         @Query("includeAdult") includeAdult: Boolean = false
     ): ApiResponse<List<Genre>>
+
+    @GET("recommendations/adaptive")
+    suspend fun getAdaptiveRecommendations(): ApiResponse<List<Anime>>
 }

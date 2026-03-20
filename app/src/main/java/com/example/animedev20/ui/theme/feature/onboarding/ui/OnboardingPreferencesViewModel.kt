@@ -3,9 +3,11 @@ package com.example.animedev20.ui.theme.feature.onboarding.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.UserSettings
+import com.example.animedev20.ui.theme.domain.model.UserDemographicCatalog
 import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +18,8 @@ import kotlinx.coroutines.launch
 
 class OnboardingPreferencesViewModel(
     private val userRepository: UserRepository,
-    private val animeRepository: AnimeRepository
+    private val animeRepository: AnimeRepository,
+    private val homeRefreshBus: HomeRefreshBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingPreferencesUiState())
@@ -54,6 +57,9 @@ class OnboardingPreferencesViewModel(
                             } else {
                                 emptySet()
                             },
+                            ageRange = if (shouldPrefill) settings.ageRange else UserDemographicCatalog.UNSPECIFIED_CODE,
+                            genderCode = if (shouldPrefill) settings.genderCode else UserDemographicCatalog.UNSPECIFIED_CODE,
+                            regionCode = if (shouldPrefill) settings.regionCode else UserDemographicCatalog.UNSPECIFIED_CODE,
                             notificationsEnabled = settings.notificationsEnabled,
                             culturalAlertsEnabled = settings.culturalAlertsEnabled,
                             autoplayNextEpisode = if (shouldPrefill) {
@@ -96,6 +102,19 @@ class OnboardingPreferencesViewModel(
         }
     }
 
+
+    fun onAgeRangeSelected(code: Int) {
+        _uiState.update { it.copy(ageRange = code) }
+    }
+
+    fun onGenderSelected(code: Int) {
+        _uiState.update { it.copy(genderCode = code) }
+    }
+
+    fun onRegionSelected(code: Int) {
+        _uiState.update { it.copy(regionCode = code) }
+    }
+
     fun onContinue() {
         val currentState = _uiState.value
         if (currentState.isSaving || currentState.selectedGenres.isEmpty()) return
@@ -109,6 +128,9 @@ class OnboardingPreferencesViewModel(
                 currentState.preferredDurations.contains(duration)
             }
             val settings = UserSettings(
+                ageRange = currentState.ageRange,
+                genderCode = currentState.genderCode,
+                regionCode = currentState.regionCode,
                 preferredGenres = selectedGenres,
                 preferredDurations = preferredDurations,
                 notificationsEnabled = currentState.notificationsEnabled,
@@ -118,6 +140,7 @@ class OnboardingPreferencesViewModel(
             )
             runCatching { userRepository.updateUserSettings(settings) }
                 .onSuccess {
+                    homeRefreshBus.trigger()
                     _uiState.update { it.copy(isSaving = false, completed = true) }
                 }
                 .onFailure { error ->
@@ -135,12 +158,13 @@ class OnboardingPreferencesViewModel(
     companion object {
         fun provideFactory(
             userRepository: UserRepository,
-            animeRepository: AnimeRepository
+            animeRepository: AnimeRepository,
+            homeRefreshBus: HomeRefreshBus
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(OnboardingPreferencesViewModel::class.java)) {
-                    return OnboardingPreferencesViewModel(userRepository, animeRepository) as T
+                    return OnboardingPreferencesViewModel(userRepository, animeRepository, homeRefreshBus) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }
@@ -153,6 +177,9 @@ data class OnboardingPreferencesUiState(
     val availableGenres: List<Genre> = emptyList(),
     val selectedGenres: Set<String> = emptySet(),
     val preferredDurations: Set<DurationType> = emptySet(),
+    val ageRange: Int = UserDemographicCatalog.UNSPECIFIED_CODE,
+    val genderCode: Int = UserDemographicCatalog.UNSPECIFIED_CODE,
+    val regionCode: Int = UserDemographicCatalog.UNSPECIFIED_CODE,
     val notificationsEnabled: Boolean = true,
     val culturalAlertsEnabled: Boolean = true,
     val autoplayNextEpisode: Boolean = true,
