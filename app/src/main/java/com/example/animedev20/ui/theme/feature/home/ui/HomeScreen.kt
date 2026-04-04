@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -33,9 +34,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.animedev20.ui.theme.data.AppContainer
@@ -60,6 +64,21 @@ fun HomeScreen(
     onAnimeSelected: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadHomeContent()
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     when (val state = uiState) {
         HomeUiState.Loading -> HomeLoadingState()
@@ -84,6 +103,7 @@ private fun HomeSuccessContent(
     val sections = homeContent.sections.filter { section ->
         section.animes.isNotEmpty() || section.genre.id == "recommendations"
     }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -108,16 +128,21 @@ private fun HomeSuccessContent(
                 onAnimeSelected = onAnimeSelected
             )
         }
+
         item {
             PreferredGenresSection(preferredGenres = homeContent.preferredGenres)
         }
+
         items(sections, key = { it.genre.id }) { section ->
             AnimeSectionRow(
                 section = section,
                 onAnimeSelected = onAnimeSelected
             )
         }
-        item { Spacer(modifier = Modifier.height(12.dp)) }
+
+        item {
+            Spacer(modifier = Modifier.height(12.dp))
+        }
     }
 }
 
@@ -143,15 +168,20 @@ private fun HeroRecommendation(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f))
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.65f)
+                            )
                         )
                     )
             )
+
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -195,7 +225,9 @@ private fun PreferredGenresSection(
             text = "Tus géneros (${preferredGenres.size})",
             style = MaterialTheme.typography.titleMedium
         )
+
         Spacer(modifier = Modifier.height(10.dp))
+
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -227,7 +259,9 @@ private fun AnimeSectionRow(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
+
         Spacer(modifier = Modifier.height(8.dp))
+
         if (section.animes.isEmpty()) {
             Text(
                 text = "No hay recomendaciones disponibles por ahora.",
@@ -272,6 +306,7 @@ private fun AnimeCard(
                     .fillMaxWidth()
                     .height(180.dp)
             )
+
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
                     text = anime.title,

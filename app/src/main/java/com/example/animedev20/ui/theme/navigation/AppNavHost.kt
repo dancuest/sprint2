@@ -59,7 +59,8 @@ fun AppNavHost(
                     }
                 },
                 onGoToRegister = { navController.navigate(Screen.Register.route) },
-                onGoToForgotPassword = { navController.navigate(Screen.ForgotPassword.route) }
+                onGoToForgotPassword = { navController.navigate(Screen.ForgotPassword.route) },
+                onGoBack = { navController.popBackStack() }
             )
         }
 
@@ -72,7 +73,8 @@ fun AppNavHost(
                         launchSingleTop = true
                     }
                 },
-                onGoToLogin = { navController.popBackStack() }
+                onGoToLogin = { navController.popBackStack() },
+                onGoBack = { navController.popBackStack() }
             )
         }
 
@@ -80,14 +82,21 @@ fun AppNavHost(
             ForgotPasswordScreen(
                 appContainer = appContainer,
                 onGoToReset = { navController.navigate(Screen.ResetPassword.route) },
-                onGoToLogin = { navController.navigate(Screen.Login.route) }
+                onGoToLogin = { navController.navigate(Screen.Login.route) },
+                onGoBack = { navController.popBackStack() }
             )
         }
 
         composable(Screen.ResetPassword.route) {
             ResetPasswordScreen(
                 appContainer = appContainer,
-                onGoToLogin = { navController.navigate(Screen.Login.route) }
+                onGoToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.AuthWelcome.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onGoBack = { navController.popBackStack() }
             )
         }
 

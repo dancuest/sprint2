@@ -33,6 +33,7 @@ fun ForgotPasswordScreen(
     appContainer: AppContainer = DefaultAppContainer(),
     onGoToReset: () -> Unit,
     onGoToLogin: () -> Unit,
+    onGoBack: () -> Unit = {},
     viewModel: AuthViewModel = viewModel(
         factory = AuthViewModel.provideFactory(
             appContext = LocalContext.current.applicationContext,
@@ -107,6 +108,10 @@ fun ForgotPasswordScreen(
             Text("Volver al login")
         }
 
+        TextButton(onClick = onGoBack) {
+            Text("Atrás")
+        }
+
         if (uiState.isLoading) {
             CircularProgressIndicator()
         }
@@ -118,7 +123,8 @@ private fun ForgotPasswordPreview() {
     Surface {
         ForgotPasswordScreen(
             onGoToReset = {},
-            onGoToLogin = {}
+            onGoToLogin = {},
+            onGoBack = {}
         )
     }
 }

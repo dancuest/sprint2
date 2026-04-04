@@ -101,11 +101,17 @@ private fun GuestFavoritesBlockedState(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Button(onClick = onGoToLogin, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onGoToLogin,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Iniciar sesión")
             }
 
-            OutlinedButton(onClick = onGoToRegister, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = onGoToRegister,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Registrarme")
             }
         }
@@ -189,17 +195,22 @@ private fun FavoriteAnimeCard(
 
             Text(
                 text = anime.title,
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = anime.synopsis ?: "Sin sinopsis disponible",
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = anime.genres.joinToString { it.name },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Button(
                 onClick = { onAnimeSelected(anime.id) },

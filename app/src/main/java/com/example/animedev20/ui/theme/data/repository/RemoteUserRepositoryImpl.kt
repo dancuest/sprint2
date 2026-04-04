@@ -113,6 +113,7 @@ class RemoteUserRepositoryImpl(
         )
 
         val merged = updated.copy(
+            name = name.ifBlank { updated.name },
             nickname = nickname.ifBlank { updated.nickname },
             email = normalizedEmail ?: updated.email
         )
@@ -136,7 +137,9 @@ class RemoteUserRepositoryImpl(
 
         val merged = updated.copy(
             avatarUrl = avatarUrl ?: updated.avatarUrl,
-            coverImageUrl = coverImageUrl ?: updated.coverImageUrl
+            coverImageUrl = coverImageUrl ?: updated.coverImageUrl,
+            nickname = profileFlow.value.nickname,
+            name = profileFlow.value.name
         )
 
         profileFlow.value = merged
@@ -159,7 +162,7 @@ class RemoteUserRepositoryImpl(
         return current.copy(
             id = id,
             name = display ?: current.name,
-            nickname = display ?: current.nickname,
+            nickname = current.nickname,
             email = email ?: current.email,
             avatarUrl = avatarUrl ?: current.avatarUrl,
             coverImageUrl = coverImageUrl ?: current.coverImageUrl,

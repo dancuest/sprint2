@@ -3,6 +3,7 @@ package com.example.animedev20.ui.theme.feature.profile.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.domain.repository.FavoritesRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,8 @@ import kotlinx.coroutines.launch
 
 class ProfileViewModel(
     private val userRepository: UserRepository,
-    private val favoritesRepository: FavoritesRepository
+    private val favoritesRepository: FavoritesRepository,
+    private val homeRefreshBus: HomeRefreshBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -22,6 +24,7 @@ class ProfileViewModel(
 
     init {
         observeProfileUpdates()
+        observeRefreshSignals()
         refresh()
     }
 
@@ -39,6 +42,14 @@ class ProfileViewModel(
                         errorMessage = error.message ?: "No fue posible cargar el perfil"
                     )
                 }
+            }
+        }
+    }
+
+    private fun observeRefreshSignals() {
+        viewModelScope.launch {
+            homeRefreshBus.events.collect {
+                refresh()
             }
         }
     }
@@ -116,14 +127,16 @@ class ProfileViewModel(
     companion object {
         fun provideFactory(
             userRepository: UserRepository,
-            favoritesRepository: FavoritesRepository
+            favoritesRepository: FavoritesRepository,
+            homeRefreshBus: HomeRefreshBus
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(ProfileViewModel::class.java)) {
                     return ProfileViewModel(
                         userRepository = userRepository,
-                        favoritesRepository = favoritesRepository
+                        favoritesRepository = favoritesRepository,
+                        homeRefreshBus = homeRefreshBus
                     ) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")

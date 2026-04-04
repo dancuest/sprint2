@@ -69,7 +69,8 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModel.provideFactory(
             userRepository = appContainer.userRepository,
-            favoritesRepository = appContainer.favoritesRepository
+            favoritesRepository = appContainer.favoritesRepository,
+            homeRefreshBus = appContainer.homeRefreshBus
         )
     )
 ) {
@@ -540,8 +541,7 @@ private fun FavoriteAnimeCard(anime: Anime) {
                 text = anime.genres.joinToString { it.name },
                 color = Color(0xFF6B6B7A),
                 maxLines = 1
-            )
-        }
+            ) }
     }
 }
 
