@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
+import com.example.animedev20.ui.theme.data.remote.ChangePasswordRequest
+import com.example.animedev20.ui.theme.data.remote.UsersApi
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.UserDemographicCatalog
@@ -19,7 +21,8 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val userRepository: UserRepository,
     private val animeRepository: AnimeRepository,
-    private val homeRefreshBus: HomeRefreshBus
+    private val homeRefreshBus: HomeRefreshBus,
+    private val usersApi: UsersApi
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -231,6 +234,49 @@ class SettingsViewModel(
         }
     }
 
+    fun changePassword(currentPassword: String, newPassword: String) {
+        if (currentPassword.isBlank() || newPassword.isBlank()) {
+            _uiState.update { it.copy(message = "Completa ambos campos") }
+            return
+        }
+        if (newPassword.length < 6) {
+            _uiState.update { it.copy(message = "La nueva contraseña debe tener al menos 6 caracteres") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isChangingPassword = true) }
+
+            runCatching {
+                usersApi.changePassword(
+                    ChangePasswordRequest(
+                        currentPassword = currentPassword,
+                        newPassword = newPassword
+                    )
+                )
+            }.onSuccess {
+                _uiState.update {
+                    it.copy(
+                        isChangingPassword = false,
+                        message = "Contraseña actualizada correctamente",
+                        passwordChangeSuccess = true
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isChangingPassword = false,
+                        message = error.message ?: "No se pudo cambiar la contraseña"
+                    )
+                }
+            }
+        }
+    }
+
+    fun onPasswordChangeConsumed() {
+        _uiState.update { it.copy(passwordChangeSuccess = false) }
+    }
+
     fun onMessageConsumed() {
         _uiState.update { it.copy(message = null) }
     }
@@ -239,7 +285,8 @@ class SettingsViewModel(
         fun provideFactory(
             userRepository: UserRepository,
             animeRepository: AnimeRepository,
-            homeRefreshBus: HomeRefreshBus
+            homeRefreshBus: HomeRefreshBus,
+            usersApi: UsersApi
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -247,7 +294,8 @@ class SettingsViewModel(
                     return SettingsViewModel(
                         userRepository,
                         animeRepository,
-                        homeRefreshBus
+                        homeRefreshBus,
+                        usersApi
                     ) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
@@ -273,5 +321,7 @@ data class SettingsUiState(
     val nickname: String = "",
     val avatarUrl: String = "",
     val coverImageUrl: String = "",
+    val isChangingPassword: Boolean = false,
+    val passwordChangeSuccess: Boolean = false,
     val message: String? = null
 )

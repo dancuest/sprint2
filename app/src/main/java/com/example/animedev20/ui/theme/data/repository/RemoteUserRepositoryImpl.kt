@@ -49,7 +49,9 @@ class RemoteUserRepositoryImpl(
         initialize(context)
         ensureAuthenticated()
 
-        val profile = usersApi.me().toDomain(profileFlow.value)
+        val dto = usersApi.me()
+        // toDomain ahora usa el nickname real del servidor
+        val profile = dto.toDomain(profileFlow.value)
         profileFlow.value = profile
         return profile
     }
@@ -98,28 +100,30 @@ class RemoteUserRepositoryImpl(
         ensureAuthenticated()
 
         val normalizedEmail = email.takeIf { it.isNotBlank() }
+        val normalizedNickname = nickname.takeIf { it.isNotBlank() }
+        val normalizedName = name.takeIf { it.isNotBlank() }
 
-        val updated = usersApi.updateProfile(
+        // Ahora enviamos nickname al servidor correctamente
+        val updatedDto = usersApi.updateProfile(
             UpdateProfileRequest(
-                displayName = name,
+                displayName = normalizedName,
+                nickname = normalizedNickname,
                 email = normalizedEmail
             )
-        ).toDomain(
-            profileFlow.value.copy(
-                nickname = nickname,
-                email = normalizedEmail ?: profileFlow.value.email,
-                name = name
-            )
         )
 
-        val merged = updated.copy(
-            name = name.ifBlank { updated.name },
-            nickname = nickname.ifBlank { updated.nickname },
-            email = normalizedEmail ?: updated.email
+        // Construimos el perfil a partir de la respuesta real del servidor
+        val merged = updatedDto.toDomain(profileFlow.value)
+
+        // Si el servidor devuelve nickname vacío (usuario invitado), conservamos el local
+        val finalProfile = merged.copy(
+            nickname = updatedDto.nickname?.takeIf { it.isNotBlank() }
+                ?: normalizedNickname
+                ?: profileFlow.value.nickname
         )
 
-        profileFlow.value = merged
-        return merged
+        profileFlow.value = finalProfile
+        return finalProfile
     }
 
     override suspend fun updateProfileImages(
@@ -128,17 +132,18 @@ class RemoteUserRepositoryImpl(
     ): UserProfile {
         ensureAuthenticated()
 
-        val updated = usersApi.updateProfile(
+        val updatedDto = usersApi.updateProfile(
             UpdateProfileRequest(
                 avatarUrl = avatarUrl,
                 coverImageUrl = coverImageUrl
             )
-        ).toDomain(profileFlow.value)
+        )
 
-        val merged = updated.copy(
-            avatarUrl = avatarUrl ?: updated.avatarUrl,
-            coverImageUrl = coverImageUrl ?: updated.coverImageUrl,
-            nickname = profileFlow.value.nickname,
+        val merged = updatedDto.toDomain(profileFlow.value).copy(
+            avatarUrl = avatarUrl ?: updatedDto.avatarUrl ?: profileFlow.value.avatarUrl,
+            coverImageUrl = coverImageUrl ?: updatedDto.coverImageUrl ?: profileFlow.value.coverImageUrl,
+            // Conservamos nickname y name del estado actual
+            nickname = updatedDto.nickname?.takeIf { it.isNotBlank() } ?: profileFlow.value.nickname,
             name = profileFlow.value.name
         )
 
@@ -156,13 +161,15 @@ class RemoteUserRepositoryImpl(
         }
     }
 
+    // ← FIX PRINCIPAL: ahora lee nickname del DTO en vez de ignorarlo
     private fun UserMeDto.toDomain(current: UserProfile): UserProfile {
         val display = displayName?.takeIf { it.isNotBlank() }
+        val serverNickname = nickname?.takeIf { it.isNotBlank() }
 
         return current.copy(
             id = id,
             name = display ?: current.name,
-            nickname = current.nickname,
+            nickname = serverNickname ?: current.nickname, // ← usa el nickname del servidor
             email = email ?: current.email,
             avatarUrl = avatarUrl ?: current.avatarUrl,
             coverImageUrl = coverImageUrl ?: current.coverImageUrl,

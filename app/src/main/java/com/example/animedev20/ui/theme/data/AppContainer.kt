@@ -34,6 +34,7 @@ interface AppContainer {
     val userRepository: UserRepository
     val interactionRepository: InteractionRepository
     val homeRefreshBus: HomeRefreshBus
+    val usersApi: UsersApi?   // ← expuesto para SettingsViewModel (cambio de contraseña)
 }
 
 class DefaultAppContainer(
@@ -47,9 +48,8 @@ class DefaultAppContainer(
     private val retrofit = tokenStore?.let { AnimeApiFactory.createRetrofit(baseUrl, it) }
     private val animeApi = retrofit?.create(AnimeApi::class.java)
     private val authApiPlain = retrofit?.create(AuthApiPlain::class.java)
-    private val usersApi = retrofit?.create(UsersApi::class.java)
+    override val usersApi = retrofit?.create(UsersApi::class.java)
     private val interactionsApi = retrofit?.create(InteractionsApi::class.java)
-
 
     override val homeRefreshBus: HomeRefreshBus = HomeRefreshBus()
 
@@ -87,7 +87,9 @@ class DefaultAppContainer(
 
     override val userRepository: UserRepository =
         if (useRemote && authApiPlain != null && usersApi != null && tokenStore != null && appContext != null && animeApi != null) {
-            RemoteUserRepositoryImpl(authApiPlain, usersApi, animeApi, tokenStore, appContext, homeRefreshBus).apply {
+            RemoteUserRepositoryImpl(
+                authApiPlain, usersApi, animeApi, tokenStore, appContext, homeRefreshBus
+            ).apply {
                 initialize(appContext)
             }
         } else {
