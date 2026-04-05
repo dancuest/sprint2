@@ -32,8 +32,7 @@ data class AuthUiState(
 class AuthViewModel(
     private val authApi: AuthApiPlain,
     private val tokenStore: AuthTokenStore,
-    private val userRepository: UserRepository,
-    private val appContext: Context
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -77,7 +76,7 @@ class AuthViewModel(
         }
 
         runAuthAction {
-            ensureGuestSessionForRegistration()
+            startFreshGuestSessionForRegistration()
 
             val response = authApi.register(
                 RegisterRequest(
@@ -187,9 +186,7 @@ class AuthViewModel(
         }
     }
 
-    private suspend fun ensureGuestSessionForRegistration() {
-        if (!tokenStore.getToken().isNullOrBlank()) return
-
+    private suspend fun startFreshGuestSessionForRegistration() {
         val deviceId = tokenStore.createFreshGuestDeviceId()
         val guestResponse = authApi.loginDevice(DeviceLoginRequest(deviceId))
         persistSession(guestResponse)
@@ -198,6 +195,9 @@ class AuthViewModel(
     private suspend fun persistSession(response: AuthSessionResponse) {
         tokenStore.saveToken(response.accessToken)
         tokenStore.saveUserId(response.userId)
+        response.profile?.deviceId
+            ?.takeIf { it.isNotBlank() }
+            ?.let(tokenStore::saveDeviceId)
     }
 
     private suspend fun navigateAccordingToSettings() {
@@ -241,8 +241,7 @@ class AuthViewModel(
                 return AuthViewModel(
                     authApi = authApi,
                     tokenStore = tokenStore,
-                    userRepository = userRepository,
-                    appContext = appContext.applicationContext
+                    userRepository = userRepository
                 ) as T
             }
         }

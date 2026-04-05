@@ -1,9 +1,14 @@
 package com.example.animedev20.ui.theme.data.remote
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.provider.Settings
 import androidx.core.content.edit
 import java.util.UUID
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class AuthTokenStore(private val context: Context) {
 
@@ -41,6 +46,36 @@ class AuthTokenStore(private val context: Context) {
     fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
 
     fun getDeviceId(): String? = prefs.getString(KEY_DEVICE_ID, null)
+
+    fun getSessionFingerprint(): String? {
+        val token = getToken()
+        val userId = getUserId()
+
+        if (token.isNullOrBlank() || userId.isNullOrBlank()) {
+            return null
+        }
+
+        return "$userId|$token"
+    }
+
+    fun observeSessionFingerprint(): Flow<String?> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (
+                key == KEY_TOKEN ||
+                key == KEY_USER_ID ||
+                key == KEY_DEVICE_ID
+            ) {
+                trySend(getSessionFingerprint())
+            }
+        }
+
+        trySend(getSessionFingerprint())
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+
+        awaitClose {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }.distinctUntilChanged()
 
     fun saveToken(token: String) {
         prefs.edit { putString(KEY_TOKEN, token) }
