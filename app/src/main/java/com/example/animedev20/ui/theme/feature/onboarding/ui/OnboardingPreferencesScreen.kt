@@ -304,6 +304,7 @@ private fun DurationPreferenceCard(
 
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun DemographicSelector(
     title: String,
     options: List<CodedOption>,
