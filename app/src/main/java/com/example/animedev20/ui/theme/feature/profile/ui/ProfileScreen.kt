@@ -87,6 +87,7 @@ fun ProfileScreen(
         uiState.profile != null -> ProfileContent(
             profile = uiState.profile!!,
             favoriteAnimes = uiState.favoriteAnimes,
+            totalFavorites = uiState.totalFavorites,
             fanLevel = uiState.fanLevel,
             triviaPlayedCount = uiState.triviaPlayedCount
         )
@@ -219,6 +220,7 @@ private fun GuestProfileBlockedState(
 private fun ProfileContent(
     profile: UserProfile,
     favoriteAnimes: List<Anime>,
+    totalFavorites: Int,
     fanLevel: String,
     triviaPlayedCount: Int
 ) {
@@ -232,12 +234,13 @@ private fun ProfileContent(
             ProfileHeader(
                 profile = profile,
                 fanLevel = fanLevel,
-                favoriteCount = favoriteAnimes.size
+                totalFavorites = totalFavorites
             )
         }
 
         item {
             ProfileStatsRow(
+                totalFavorites = totalFavorites,
                 fanLevel = fanLevel,
                 triviaPlayedCount = triviaPlayedCount
             )
@@ -316,7 +319,7 @@ private fun ProfileContent(
 private fun ProfileHeader(
     profile: UserProfile,
     fanLevel: String,
-    favoriteCount: Int
+    totalFavorites: Int
 ) {
     val displayName = profile.name.ifBlank {
         profile.nickname.ifBlank { "Invitado" }
@@ -380,7 +383,7 @@ private fun ProfileHeader(
             )
 
             Text(
-                text = "$favoriteCount favoritos sincronizados",
+                text = "Favoritos: $totalFavorites",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -467,6 +470,7 @@ private fun AvatarImage(
 
 @Composable
 private fun ProfileStatsRow(
+    totalFavorites: Int,
     fanLevel: String,
     triviaPlayedCount: Int
 ) {
@@ -476,6 +480,13 @@ private fun ProfileStatsRow(
             .padding(horizontal = 16.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        Box(modifier = Modifier.weight(1f)) {
+            ProfileStatCard(
+                title = "Favoritos",
+                value = totalFavorites.toString()
+            )
+        }
+
         Box(modifier = Modifier.weight(1f)) {
             ProfileStatCard(
                 title = "Nivel fan",
@@ -518,6 +529,7 @@ private fun ProfileStatCard(
 
             Text(
                 text = title,
+                style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -528,34 +540,37 @@ private fun ProfileStatCard(
 @Composable
 private fun FavoriteAnimeCard(anime: Anime) {
     Card(
-        modifier = Modifier.size(width = 160.dp, height = 220.dp),
+        modifier = Modifier.width(180.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        AsyncImage(
-            model = anime.coverImageUrl,
-            contentDescription = anime.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(150.dp)
-        )
-
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = anime.title,
-                maxLines = 1,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        Column {
+            AsyncImage(
+                model = anime.coverImageUrl,
+                contentDescription = anime.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = anime.title,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2
+                )
 
-            Text(
-                text = anime.genres.joinToString { it.name },
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                maxLines = 1
-            )
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = anime.genres.take(2).map { it.name }.joinToString(" • "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -564,7 +579,8 @@ private fun FavoriteAnimeCard(anime: Anime) {
 private fun SectionTitle(title: String) {
     Text(
         text = title,
-        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
     )
@@ -574,42 +590,64 @@ private fun SectionTitle(title: String) {
 private fun EmptySectionMessage(message: String) {
     Text(
         text = message,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 16.dp)
     )
 }
 
-private fun durationPreferenceLabel(durationType: DurationType) = when (durationType) {
-    DurationType.SHORT -> "Cortas"
-    DurationType.MEDIUM -> "Medianas"
-    DurationType.LONG -> "Largas"
+private fun durationPreferenceLabel(duration: DurationType): String {
+    return when (duration) {
+        DurationType.SHORT -> "Cortas"
+        DurationType.MEDIUM -> "Medias"
+        DurationType.LONG -> "Largas"
+    }
 }
 
-private fun decodeImageBitmapFromDataUrl(dataUrl: String?): ImageBitmap? {
-    if (dataUrl.isNullOrBlank()) return null
+private fun decodeImageBitmapFromDataUrl(dataUrl: String): ImageBitmap? {
     if (!dataUrl.startsWith("data:image")) return null
 
-    return try {
-        val base64Part = dataUrl.substringAfter("base64,", "")
-        if (base64Part.isBlank()) return null
-
-        val bytes = Base64.decode(base64Part, Base64.DEFAULT)
+    return runCatching {
+        val encoded = dataUrl.substringAfter("base64,", missingDelimiterValue = "")
+        if (encoded.isBlank()) return null
+        val bytes = Base64.decode(encoded, Base64.DEFAULT)
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-    } catch (_: Exception) {
-        null
-    }
+    }.getOrNull()
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun ProfileScreenPreview() {
+private fun ProfileContentPreview() {
     AnimeDevTheme {
         Surface {
             ProfileContent(
-                profile = FakeDataSource.defaultUserProfile,
-                favoriteAnimes = FakeDataSource.recentAnimeHistory,
-                fanLevel = "Muy fan del anime",
-                triviaPlayedCount = 8
+                profile = UserProfile(
+                    id = "1",
+                    name = "Naruto Uzumaki",
+                    nickname = "hokagefan",
+                    email = "naruto@konoha.com",
+                    avatarUrl = "",
+                    knowledgeLevel = "Principiante",
+                    xpPoints = 0,
+                    biography = "",
+                    totalAnimesWatched = 0,
+                    completedTrivias = 7,
+                    preferredDurations = listOf(
+                        DurationType.SHORT,
+                        DurationType.MEDIUM
+                    ),
+                    favoriteGenres = listOf(
+                        FakeDataSource.genres.first(),
+                        FakeDataSource.genres[1]
+                    ),
+                    badges = emptyList(),
+                    favoriteQuote = null,
+                    coverImageUrl = ""
+                ),
+                favoriteAnimes = FakeDataSource.animeCatalog.take(3),
+                totalFavorites = 3,
+                fanLevel = "Otaku maestro",
+                triviaPlayedCount = 7
             )
         }
     }

@@ -7,6 +7,7 @@ data class ProfileUiState(
     val isLoading: Boolean = true,
     val profile: UserProfile? = null,
     val favoriteAnimes: List<Anime> = emptyList(),
+    val totalFavorites: Int = 0,
     val fanLevel: String = "",
     val triviaPlayedCount: Int = 0,
     val errorMessage: String? = null

@@ -98,8 +98,9 @@ class ProfileViewModel(
 
                 ProfileUiState(
                     isLoading = false,
-                    profile = profile.copy(totalAnimesWatched = favoriteCount),
+                    profile = profile,
                     favoriteAnimes = favoriteAnimes,
+                    totalFavorites = favoriteCount,
                     fanLevel = buildFanLevel(
                         favoriteCount = favoriteCount,
                         triviaCount = triviaPlayedCount
@@ -113,6 +114,11 @@ class ProfileViewModel(
         }
     }
 
+    // Fan level score = interacciones positivas acumuladas
+    // 0-5 puntos: Explorador del anime
+    // 6-11 puntos: Fan en crecimiento
+    // 12-19 puntos: Muy fan del anime
+    // 20+ puntos: Otaku maestro
     private fun buildFanLevel(favoriteCount: Int, triviaCount: Int): String {
         val score = favoriteCount + triviaCount
 

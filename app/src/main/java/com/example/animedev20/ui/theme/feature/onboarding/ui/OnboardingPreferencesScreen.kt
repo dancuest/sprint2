@@ -46,8 +46,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
+import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.CodedOption
 import com.example.animedev20.ui.theme.domain.model.DurationType
+import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.domain.model.UserDemographicCatalog
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 
@@ -137,12 +139,13 @@ fun OnboardingPreferencesScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            state.availableGenres.forEach { genre ->
+                            state.availableGenres.forEach { genre: Genre ->
+                                val isSelected = state.selectedGenres.contains(genre.id)
                                 FilterChip(
-                                    selected = state.selectedGenres.contains(genre.id),
+                                    selected = isSelected,
                                     onClick = { onGenreSelected(genre.id) },
                                     label = { Text(genre.name) },
-                                    leadingIcon = if (state.selectedGenres.contains(genre.id)) {
+                                    leadingIcon = if (isSelected) {
                                         {
                                             Icon(
                                                 Icons.Default.CheckCircle,
@@ -170,7 +173,7 @@ fun OnboardingPreferencesScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            DurationType.values().forEach { duration ->
+                            DurationType.entries.forEach { duration: DurationType ->
                                 DurationPreferenceCard(
                                     durationType = duration,
                                     selected = state.preferredDurations.contains(duration),
@@ -392,7 +395,10 @@ private fun OnboardingPreferencesPreview() {
                 isLoading = false,
                 availableGenres = FakeDataSource.genres,
                 selectedGenres = emptySet(),
-                preferredDurations = emptySet()
+                preferredDurations = emptySet(),
+                ageRange = 0,
+                genderCode = 0,
+                regionCode = 0
             ),
             onGenreSelected = {},
             onDurationSelected = {},
