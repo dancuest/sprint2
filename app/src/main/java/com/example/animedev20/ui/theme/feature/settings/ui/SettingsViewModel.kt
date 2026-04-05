@@ -263,10 +263,24 @@ class SettingsViewModel(
                     )
                 }
             }.onFailure { error ->
+                val backendMessage = when (error) {
+                    is retrofit2.HttpException -> {
+                        try {
+                            error.response()?.errorBody()?.string()
+                                ?.substringAfter("\"message\":\"")
+                                ?.substringBefore("\"")
+                                ?.replace("\\\"", "\"")
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                    else -> null
+                }
+
                 _uiState.update {
                     it.copy(
                         isChangingPassword = false,
-                        message = error.message ?: "No se pudo cambiar la contraseña"
+                        message = backendMessage ?: error.message ?: "No se pudo cambiar la contraseña"
                     )
                 }
             }
