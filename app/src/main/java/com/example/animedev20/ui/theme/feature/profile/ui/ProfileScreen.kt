@@ -104,7 +104,11 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileLoadingState() {
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
     }
 }
@@ -117,13 +121,15 @@ private fun ProfileErrorState(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = message ?: "Ocurrió un error al cargar tu perfil",
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -141,13 +147,15 @@ private fun ProfileEmptyState(onRetry: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = "Todavía no hay información suficiente para mostrar tu perfil.",
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -166,6 +174,7 @@ private fun GuestProfileBlockedState(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp)
     ) {
         Column(
@@ -177,7 +186,8 @@ private fun GuestProfileBlockedState(
                 text = "Perfil bloqueado para invitados",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Text(
@@ -215,7 +225,7 @@ private fun ProfileContent(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF7F7FB)),
+            .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
         item {
@@ -251,7 +261,8 @@ private fun ProfileContent(
                             onClick = {},
                             label = { Text(genre.name) },
                             colors = AssistChipDefaults.assistChipColors(
-                                containerColor = Color(0xFFE9E6FF)
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                labelColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         )
                     }
@@ -316,7 +327,7 @@ private fun ProfileHeader(
         modifier = Modifier
             .fillMaxWidth()
             .height(330.dp)
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
     ) {
         Box(
             modifier = Modifier
@@ -351,12 +362,13 @@ private fun ProfileHeader(
 
             Text(
                 text = displayName,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Text(
                 text = "@$nickname",
-                color = Color(0xFF6B6B7A)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -364,12 +376,12 @@ private fun ProfileHeader(
             Text(
                 text = fanLevel,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF4A3AFF)
+                color = MaterialTheme.colorScheme.primary
             )
 
             Text(
                 text = "$favoriteCount favoritos sincronizados",
-                color = Color(0xFF6B6B7A)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -426,7 +438,7 @@ private fun AvatarImage(
         modifier = Modifier
             .size(112.dp)
             .clip(CircleShape)
-            .background(Color.White),
+            .background(MaterialTheme.colorScheme.surface),
         contentAlignment = Alignment.Center
     ) {
         when {
@@ -447,7 +459,7 @@ private fun AvatarImage(
             else -> Text(
                 text = fallbackText,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF4A3AFF)
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -488,7 +500,7 @@ private fun ProfileStatCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Column(
@@ -498,7 +510,8 @@ private fun ProfileStatCard(
             Text(
                 text = value,
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -506,7 +519,7 @@ private fun ProfileStatCard(
             Text(
                 text = title,
                 textAlign = TextAlign.Center,
-                color = Color(0xFF6B6B7A)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -517,7 +530,7 @@ private fun FavoriteAnimeCard(anime: Anime) {
     Card(
         modifier = Modifier.size(width = 160.dp, height = 220.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         AsyncImage(
@@ -532,16 +545,18 @@ private fun FavoriteAnimeCard(anime: Anime) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = anime.title,
-                maxLines = 1
+                maxLines = 1,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = anime.genres.joinToString { it.name },
-                color = Color(0xFF6B6B7A),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 maxLines = 1
-            ) }
+            )
+        }
     }
 }
 
@@ -550,6 +565,7 @@ private fun SectionTitle(title: String) {
     Text(
         text = title,
         fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
     )
 }
@@ -558,7 +574,7 @@ private fun SectionTitle(title: String) {
 private fun EmptySectionMessage(message: String) {
     Text(
         text = message,
-        color = Color(0xFF6B6B7A),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 16.dp)
     )
 }
