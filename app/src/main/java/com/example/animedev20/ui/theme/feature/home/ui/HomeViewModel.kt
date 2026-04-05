@@ -8,6 +8,7 @@ import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import com.example.animedev20.ui.theme.domain.usecase.GetHomeContentUseCase
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,18 +32,39 @@ class HomeViewModel(
     fun loadHomeContent() {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            _uiState.value = HomeUiState.Loading
+            // Solo muestra Loading si no había contenido previo exitoso
+            if (_uiState.value !is HomeUiState.Success) {
+                _uiState.value = HomeUiState.Loading
+            }
+
             val result = getHomeContentUseCase()
             result.fold(
                 onSuccess = { homeContent ->
                     _uiState.value = HomeUiState.Success(homeContent)
                 },
                 onFailure = { throwable ->
-                    _uiState.value = HomeUiState.Error(
-                        throwable.message ?: "Ha ocurrido un error inesperado"
-                    )
+                    // Si ya había contenido exitoso visible, NO pisamos con error.
+                    // Dejamos el contenido anterior y reintentamos silenciosamente.
+                    if (_uiState.value is HomeUiState.Success) {
+                        scheduleRetry()
+                    } else {
+                        _uiState.value = HomeUiState.Error(
+                            throwable.message ?: "Ha ocurrido un error inesperado"
+                        )
+                    }
                 }
             )
+        }
+    }
+
+    private fun scheduleRetry() {
+        viewModelScope.launch {
+            delay(4_000L)
+            val result = getHomeContentUseCase()
+            result.onSuccess { homeContent ->
+                _uiState.value = HomeUiState.Success(homeContent)
+            }
+            // Si falla de nuevo, se mantiene el contenido anterior visible
         }
     }
 

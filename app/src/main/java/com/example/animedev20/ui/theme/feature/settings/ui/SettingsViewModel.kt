@@ -304,6 +304,7 @@ class SettingsViewModel(
     }
 }
 
+
 data class SettingsUiState(
     val isLoading: Boolean = true,
     val availableGenres: List<Genre> = emptyList(),
@@ -323,5 +324,8 @@ data class SettingsUiState(
     val coverImageUrl: String = "",
     val isChangingPassword: Boolean = false,
     val passwordChangeSuccess: Boolean = false,
-    val message: String? = null
+    val message: String? = null,
+    val currentPassword: String = "",
+    val newPassword: String = "",
+    val confirmPassword: String = "",
 )

@@ -9,7 +9,7 @@ data class UserMeDto(
     val deviceId: String?,
     val email: String?,
     val displayName: String?,
-    val nickname: String? = null,       // ← AGREGADO: venía vacío del servidor
+    val nickname: String? = null,
     val avatarUrl: String? = null,
     val coverImageUrl: String? = null,
     val createdAt: String?,
@@ -19,7 +19,7 @@ data class UserMeDto(
 
 data class UpdateProfileRequest(
     val displayName: String? = null,
-    val nickname: String? = null,       // ← AGREGADO: ahora se envía al servidor
+    val nickname: String? = null,
     val email: String? = null,
     val avatarUrl: String? = null,
     val coverImageUrl: String? = null
@@ -71,5 +71,5 @@ interface UsersApi {
     suspend fun updateSettings(@Body req: UpdateSettingsRequest): UserSettingsDto
 
     @PUT("users/me/change-password")
-    suspend fun changePassword(@Body req: ChangePasswordRequest): BasicMessageResponse
+    suspend fun changePassword(@Body req: ChangePasswordRequest): Map<String, String>
 }

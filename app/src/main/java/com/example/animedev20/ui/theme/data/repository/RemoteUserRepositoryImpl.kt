@@ -5,6 +5,7 @@ import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.data.remote.AnimeApi
 import com.example.animedev20.ui.theme.data.remote.AuthApiPlain
 import com.example.animedev20.ui.theme.data.remote.AuthTokenStore
+import com.example.animedev20.ui.theme.data.remote.ChangePasswordRequest
 import com.example.animedev20.ui.theme.data.remote.DeviceLoginRequest
 import com.example.animedev20.ui.theme.data.remote.GenreDto
 import com.example.animedev20.ui.theme.data.remote.UpdateProfileRequest
@@ -149,6 +150,10 @@ class RemoteUserRepositoryImpl(
 
         profileFlow.value = merged
         return merged
+    }
+
+    override suspend fun changePassword(currentPassword: String, newPassword: String) {
+        usersApi.changePassword(ChangePasswordRequest(currentPassword, newPassword))
     }
 
     private suspend fun ensureAuthenticated() {
