@@ -8,6 +8,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface AnimeApi {
+
     @GET("anime/hero")
     suspend fun getHero(): ApiResponse<Anime>
 
@@ -39,4 +40,7 @@ interface AnimeApi {
 
     @GET("recommendations/adaptive")
     suspend fun getAdaptiveRecommendations(): ApiResponse<List<Anime>>
+
+    @GET("users/me/favorites")
+    suspend fun getMyFavoriteIds(): ApiResponse<List<Long>>
 }
