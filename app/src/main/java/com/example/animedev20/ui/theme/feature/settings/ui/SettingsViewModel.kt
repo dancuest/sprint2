@@ -65,6 +65,7 @@ class SettingsViewModel(
                         nickname = profile.nickname,
                         avatarUrl = profile.avatarUrl,
                         coverImageUrl = profile.coverImageUrl,
+                        isGuest = profile.email.isBlank(),
                         message = null
                     )
                 }
@@ -134,6 +135,8 @@ class SettingsViewModel(
     }
 
     fun onAvatarImageSelected(imageDataUrl: String) {
+        if (_uiState.value.isGuest) return
+
         viewModelScope.launch {
             runCatching {
                 userRepository.updateProfileImages(avatarUrl = imageDataUrl)
@@ -154,6 +157,8 @@ class SettingsViewModel(
     }
 
     fun onCoverImageSelected(imageDataUrl: String) {
+        if (_uiState.value.isGuest) return
+
         viewModelScope.launch {
             runCatching {
                 userRepository.updateProfileImages(coverImageUrl = imageDataUrl)
@@ -221,7 +226,8 @@ class SettingsViewModel(
                         email = updatedProfile.email,
                         nickname = updatedProfile.nickname,
                         avatarUrl = updatedProfile.avatarUrl,
-                        coverImageUrl = updatedProfile.coverImageUrl
+                        coverImageUrl = updatedProfile.coverImageUrl,
+                        isGuest = updatedProfile.email.isBlank()
                     )
                 }
             }.onFailure { error ->
@@ -235,6 +241,8 @@ class SettingsViewModel(
     }
 
     fun changePassword(currentPassword: String, newPassword: String) {
+        if (_uiState.value.isGuest) return
+
         if (currentPassword.isBlank() || newPassword.isBlank()) {
             _uiState.update { it.copy(message = "Completa ambos campos") }
             return
@@ -318,7 +326,6 @@ class SettingsViewModel(
     }
 }
 
-
 data class SettingsUiState(
     val isLoading: Boolean = true,
     val availableGenres: List<Genre> = emptyList(),
@@ -336,6 +343,7 @@ data class SettingsUiState(
     val nickname: String = "",
     val avatarUrl: String = "",
     val coverImageUrl: String = "",
+    val isGuest: Boolean = true,
     val isChangingPassword: Boolean = false,
     val passwordChangeSuccess: Boolean = false,
     val message: String? = null,

@@ -12,7 +12,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -227,7 +226,6 @@ private fun SettingsContent(
             .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 48.dp)
     ) {
-        // ── Encabezado ──────────────────────────────────────────────────────
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(
@@ -242,26 +240,26 @@ private fun SettingsContent(
             }
         }
 
-        // ── Personalización visual ──────────────────────────────────────────
-        item {
-            SettingSectionTitle(title = "Personalización visual")
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                AvatarSettingCard(
-                    avatarUrl = state.avatarUrl,
-                    nickname = state.nickname,
-                    onClick = onPickAvatar
-                )
-                CoverSettingCard(
-                    coverImageUrl = state.coverImageUrl,
-                    onClick = onPickCover
-                )
+        if (!state.isGuest) {
+            item {
+                SettingSectionTitle(title = "Personalización visual")
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    AvatarSettingCard(
+                        avatarUrl = state.avatarUrl,
+                        nickname = state.nickname,
+                        onClick = onPickAvatar
+                    )
+                    CoverSettingCard(
+                        coverImageUrl = state.coverImageUrl,
+                        onClick = onPickCover
+                    )
+                }
             }
         }
 
-        // ── Géneros ─────────────────────────────────────────────────────────
         item {
             SettingSectionTitle(title = "Categorías que te interesan")
             OutlinedTextField(
@@ -299,7 +297,6 @@ private fun SettingsContent(
             )
         }
 
-        // ── Datos demográficos ───────────────────────────────────────────────
         item {
             SettingSectionTitle(title = "Datos demográficos (opcional)")
             Column(
@@ -327,7 +324,6 @@ private fun SettingsContent(
             }
         }
 
-        // ── Duraciones ──────────────────────────────────────────────────────
         item {
             SettingSectionTitle(title = "Duraciones preferidas de las series")
             Row(
@@ -356,52 +352,53 @@ private fun SettingsContent(
             }
         }
 
-        // ── Datos del perfil ─────────────────────────────────────────────────
-        item {
-            SettingSectionTitle(title = "Datos del perfil")
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = state.name,
-                    onValueChange = onNameChange,
-                    label = { Text("Nombre completo") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = state.email,
-                    onValueChange = onEmailChange,
-                    label = { Text("Correo electrónico") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = state.nickname,
-                    onValueChange = onNicknameChange,
-                    label = { Text("Nombre público o nickname") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Button(
-                    onClick = onSaveAccountInfo,
-                    modifier = Modifier
-                        .padding(vertical = 16.dp)
-                        .fillMaxWidth()
-                ) {
-                    Text("Actualizar datos de perfil")
+        if (!state.isGuest) {
+            item {
+                SettingSectionTitle(title = "Datos del perfil")
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = state.name,
+                        onValueChange = onNameChange,
+                        label = { Text("Nombre completo") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = state.email,
+                        onValueChange = onEmailChange,
+                        label = { Text("Correo electrónico") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = state.nickname,
+                        onValueChange = onNicknameChange,
+                        label = { Text("Nombre público o nickname") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = onSaveAccountInfo,
+                        modifier = Modifier
+                            .padding(vertical = 16.dp)
+                            .fillMaxWidth()
+                    ) {
+                        Text("Actualizar datos de perfil")
+                    }
                 }
             }
         }
 
-        // ── Cambiar contraseña ───────────────────────────────────────────────
-        item {
-            SettingSectionTitle(title = "Seguridad")
-            ChangePasswordCard(
-                isLoading = state.isChangingPassword,
-                onChangePassword = onChangePassword
-            )
+        if (!state.isGuest) {
+            item {
+                SettingSectionTitle(title = "Seguridad")
+                ChangePasswordCard(
+                    isLoading = state.isChangingPassword,
+                    onChangePassword = onChangePassword
+                )
+            }
         }
 
-        // ── Sesión ───────────────────────────────────────────────────────────
         item {
             SettingSectionTitle(title = "Sesión")
             Button(
@@ -419,10 +416,6 @@ private fun SettingsContent(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sección de cambio de contraseña
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ChangePasswordCard(
@@ -471,7 +464,6 @@ private fun ChangePasswordCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            // Contraseña actual
             OutlinedTextField(
                 value = currentPassword,
                 onValueChange = { currentPassword = it },
@@ -504,7 +496,6 @@ private fun ChangePasswordCard(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Nueva contraseña
             OutlinedTextField(
                 value = newPassword,
                 onValueChange = { newPassword = it },
@@ -537,7 +528,6 @@ private fun ChangePasswordCard(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Confirmar nueva contraseña
             OutlinedTextField(
                 value = confirmNewPassword,
                 onValueChange = { confirmNewPassword = it },
@@ -545,9 +535,7 @@ private fun ChangePasswordCard(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Filled.Lock,
-                        contentDescription = null,
-                        tint = if (!passwordsMatch) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                        contentDescription = null
                     )
                 },
                 trailingIcon = {
@@ -561,87 +549,96 @@ private fun ChangePasswordCard(
                 },
                 visualTransformation = if (confirmVisible) VisualTransformation.None
                 else PasswordVisualTransformation(),
-                isError = !passwordsMatch,
-                supportingText = if (!passwordsMatch) {
-                    { Text("Las contraseñas no coinciden") }
-                } else null,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(
                     onDone = {
-                        focusManager.clearFocus()
                         if (canSubmit) {
                             onChangePassword(currentPassword, newPassword)
                             currentPassword = ""
                             newPassword = ""
                             confirmNewPassword = ""
+                            focusManager.clearFocus()
                         }
                     }
                 ),
+                isError = confirmNewPassword.isNotBlank() && newPassword != confirmNewPassword,
+                supportingText = {
+                    if (confirmNewPassword.isNotBlank() && newPassword != confirmNewPassword) {
+                        Text("Las contraseñas no coinciden")
+                    }
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                }
-            } else {
-                Button(
-                    onClick = {
-                        if (canSubmit) {
-                            onChangePassword(currentPassword, newPassword)
-                            currentPassword = ""
-                            newPassword = ""
-                            confirmNewPassword = ""
-                        }
-                    },
-                    enabled = canSubmit,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+            Button(
+                onClick = {
+                    onChangePassword(currentPassword, newPassword)
+                    currentPassword = ""
+                    newPassword = ""
+                    confirmNewPassword = ""
+                    focusManager.clearFocus()
+                },
+                enabled = canSubmit,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
                     Text("Actualizar contraseña")
                 }
             }
         }
     }
-
-    Spacer(modifier = Modifier.height(8.dp))
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Composables de soporte (sin cambios respecto al original)
-// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun SettingSectionTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleLarge,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+    )
+}
 
 @Composable
-private fun AvatarSettingCard(avatarUrl: String, nickname: String, onClick: () -> Unit) {
+private fun AvatarSettingCard(
+    avatarUrl: String,
+    nickname: String,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
             AvatarPreview(
                 avatarUrl = avatarUrl,
-                fallbackText = nickname.firstOrNull()?.uppercase() ?: "A"
+                nickname = nickname
             )
+            Spacer(modifier = Modifier.size(16.dp))
             Column {
                 Text(
                     text = "Foto de perfil",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "Toca aquí para cambiar tu foto desde la galería.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Toca para seleccionar una nueva imagen",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -650,25 +647,162 @@ private fun AvatarSettingCard(avatarUrl: String, nickname: String, onClick: () -
 }
 
 @Composable
-private fun CoverSettingCard(coverImageUrl: String, onClick: () -> Unit) {
+private fun CoverSettingCard(
+    coverImageUrl: String,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(150.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp)
+            .height(150.dp),
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            CoverPreview(coverImageUrl = coverImageUrl, modifier = Modifier.fillMaxSize())
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.18f)))
-            Column(
+            CoverPreview(
+                coverImageUrl = coverImageUrl,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.25f))
+            )
+            Text(
+                text = "Toca para actualizar tu portada",
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(16.dp)
-            ) {
-                Text(text = "Portada del perfil", color = Color.White, fontWeight = FontWeight.Bold)
-                Text(text = "Toca aquí para cambiar el fondo del perfil.", color = Color.White)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AvatarPreview(
+    avatarUrl: String,
+    nickname: String
+) {
+    val decodedBitmap = remember(avatarUrl) {
+        decodeImageBitmapFromDataUrl(avatarUrl)
+    }
+
+    Box(
+        modifier = Modifier
+            .size(72.dp)
+            .clip(CircleShape)
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.secondary
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            decodedBitmap != null -> Image(
+                bitmap = decodedBitmap,
+                contentDescription = "Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            avatarUrl.isNotBlank() -> AsyncImage(
+                model = avatarUrl,
+                contentDescription = "Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            else -> Text(
+                text = nickname.take(1).uppercase().ifBlank { "A" },
+                color = Color.White,
+                style = MaterialTheme.typography.headlineSmall
+            )
+        }
+    }
+}
+
+@Composable
+private fun CoverPreview(
+    coverImageUrl: String,
+    modifier: Modifier = Modifier
+) {
+    val decodedBitmap = remember(coverImageUrl) {
+        decodeImageBitmapFromDataUrl(coverImageUrl)
+    }
+
+    when {
+        decodedBitmap != null -> Image(
+            bitmap = decodedBitmap,
+            contentDescription = "Portada",
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+        )
+
+        coverImageUrl.isNotBlank() -> AsyncImage(
+            model = coverImageUrl,
+            contentDescription = "Portada",
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+        )
+
+        else -> Box(
+            modifier = modifier.background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        Color(0xFF6C63FF),
+                        Color(0xFF9D7CFF),
+                        Color(0xFFFF7EB6)
+                    )
+                )
+            )
+        )
+    }
+}
+
+@Composable
+private fun DurationPreferenceChip(
+    label: String,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.heightIn(min = 92.dp),
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
             }
+        ),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -681,192 +815,94 @@ private fun DemographicSelector(
     selectedCode: Int,
     onSelected: (Int) -> Unit
 ) {
-    Text(text = title, style = MaterialTheme.typography.bodyMedium)
-    Spacer(modifier = Modifier.height(6.dp))
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        options.forEach { option ->
-            FilterChip(
-                selected = selectedCode == option.code,
-                onClick = { onSelected(option.code) },
-                label = { Text(option.label) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { option ->
+                FilterChip(
+                    selected = selectedCode == option.code,
+                    onClick = { onSelected(option.code) },
+                    label = { Text(option.label) }
                 )
-            )
+            }
         }
     }
 }
 
 @Composable
 private fun SettingsLoadingState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        CircularProgressIndicator()
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(text = "Cargando tus preferencias…")
+    Box(modifier = modifier) {
+        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
     }
 }
 
-@Composable
-private fun SettingSectionTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-    )
-}
-
-@Composable
-private fun DurationPreferenceChip(
-    label: String,
-    description: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .heightIn(min = 176.dp)
-            .background(
-                color = if (selected) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant,
-                shape = MaterialTheme.shapes.medium
-            )
-            .padding(12.dp)
-    ) {
-        Text(text = label, style = MaterialTheme.typography.titleSmall)
-        Text(
-            text = description,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-            Text(if (selected) "Quitar" else "Agregar")
-        }
+private fun durationLabel(duration: DurationType): String {
+    return when (duration) {
+        DurationType.SHORT -> "Cortas"
+        DurationType.MEDIUM -> "Medias"
+        DurationType.LONG -> "Largas"
     }
 }
 
-@Composable
-private fun AvatarPreview(avatarUrl: String, fallbackText: String) {
-    val decodedBitmap = remember(avatarUrl) { decodeImageBitmapFromDataUrl(avatarUrl) }
-    Box(
-        modifier = Modifier
-            .size(72.dp)
-            .clip(CircleShape)
-            .background(Color.White),
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            decodedBitmap != null -> Image(
-                bitmap = decodedBitmap,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-            avatarUrl.isNotBlank() -> AsyncImage(
-                model = avatarUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-            else -> Text(
-                text = fallbackText,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-        }
+private fun durationDescription(duration: DurationType): String {
+    return when (duration) {
+        DurationType.SHORT -> "Ideal para ver capítulos rápidos o historias compactas."
+        DurationType.MEDIUM -> "Equilibrio entre desarrollo de historia y duración."
+        DurationType.LONG -> "Series extensas para maratones o tramas más profundas."
     }
 }
 
-@Composable
-private fun CoverPreview(coverImageUrl: String, modifier: Modifier = Modifier) {
-    val decodedBitmap = remember(coverImageUrl) { decodeImageBitmapFromDataUrl(coverImageUrl) }
-    when {
-        decodedBitmap != null -> Image(
-            bitmap = decodedBitmap,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = modifier
-        )
-        coverImageUrl.isNotBlank() -> AsyncImage(
-            model = coverImageUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = modifier
-        )
-        else -> Box(
-            modifier = modifier.background(
-                Brush.horizontalGradient(
-                    colors = listOf(Color(0xFF6C63FF), Color(0xFF8B5CFF), Color(0xFFFF7AB6))
-                )
-            )
-        )
-    }
+private fun decodeImageBitmapFromDataUrl(dataUrl: String): ImageBitmap? {
+    if (!dataUrl.startsWith("data:image")) return null
+
+    return runCatching {
+        val encoded = dataUrl.substringAfter("base64,", missingDelimiterValue = "")
+        if (encoded.isBlank()) return null
+        val bytes = Base64.decode(encoded, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+    }.getOrNull()
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-private fun durationLabel(d: DurationType) = when (d) {
-    DurationType.SHORT -> "Cortos"
-    DurationType.MEDIUM -> "Medianos"
-    DurationType.LONG -> "Largos"
-}
-
-private fun durationDescription(d: DurationType) = when (d) {
-    DurationType.SHORT -> "Menos de 15 episodios, perfectos para maratones rápidos."
-    DurationType.MEDIUM -> "Series entre 16 y 40 episodios para equilibrar historia y tiempo."
-    DurationType.LONG -> "Sagas extensas, ideales si disfrutas seguir historias épicas."
-}
-
-private fun Context.uriToCompressedJpegDataUrl(uri: Uri): String? {
+private suspend fun Context.uriToCompressedJpegDataUrl(uri: Uri): String? = runCatching {
     val bitmap = loadBitmapFromUri(uri) ?: return null
-    val scaledBitmap = bitmap.scaleToMaxSide(1200)
-    val outputStream = ByteArrayOutputStream()
-    scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 75, outputStream)
-    val base64 = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
-    return "data:image/jpeg;base64,$base64"
-}
+    val resized = bitmap.resizeKeepingAspect(maxSide = 1200)
+    val stream = ByteArrayOutputStream()
+    resized.compress(Bitmap.CompressFormat.JPEG, 82, stream)
+    val base64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+    "data:image/jpeg;base64,$base64"
+}.getOrNull()
 
 private fun Context.loadBitmapFromUri(uri: Uri): Bitmap? {
-    return try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            ImageDecoder.decodeBitmap(ImageDecoder.createSource(contentResolver, uri))
-        } else {
-            @Suppress("DEPRECATION")
-            MediaStore.Images.Media.getBitmap(contentResolver, uri)
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val source = ImageDecoder.createSource(contentResolver, uri)
+        ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+            decoder.isMutableRequired = false
+            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
         }
-    } catch (_: Exception) { null }
+    } else {
+        @Suppress("DEPRECATION")
+        MediaStore.Images.Media.getBitmap(contentResolver, uri)
+    }
 }
 
-private fun Bitmap.scaleToMaxSide(maxSide: Int): Bitmap {
-    val currentMax = max(width, height)
-    if (currentMax <= maxSide) return this
-    val ratio = maxSide.toFloat() / currentMax.toFloat()
-    return Bitmap.createScaledBitmap(
-        this,
-        (width * ratio).roundToInt(),
-        (height * ratio).roundToInt(),
-        true
-    )
-}
+private fun Bitmap.resizeKeepingAspect(maxSide: Int): Bitmap {
+    val srcWidth = width
+    val srcHeight = height
+    val maxCurrentSide = max(srcWidth, srcHeight)
 
-private fun decodeImageBitmapFromDataUrl(dataUrl: String?): ImageBitmap? {
-    if (dataUrl.isNullOrBlank() || !dataUrl.startsWith("data:image")) return null
-    return try {
-        val base64Part = dataUrl.substringAfter("base64,", "")
-        if (base64Part.isBlank()) return null
-        val bytes = Base64.decode(base64Part, Base64.DEFAULT)
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-    } catch (_: Exception) { null }
+    if (maxCurrentSide <= maxSide) return this
+
+    val scale = maxSide.toFloat() / maxCurrentSide.toFloat()
+    val targetWidth = (srcWidth * scale).roundToInt()
+    val targetHeight = (srcHeight * scale).roundToInt()
+
+    return Bitmap.createScaledBitmap(this, targetWidth, targetHeight, true)
 }

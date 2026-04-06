@@ -87,7 +87,6 @@ fun ProfileScreen(
         uiState.profile != null -> ProfileContent(
             profile = uiState.profile!!,
             favoriteAnimes = uiState.favoriteAnimes,
-            totalFavorites = uiState.totalFavorites,
             fanLevel = uiState.fanLevel,
             triviaPlayedCount = uiState.triviaPlayedCount
         )
@@ -220,7 +219,6 @@ private fun GuestProfileBlockedState(
 private fun ProfileContent(
     profile: UserProfile,
     favoriteAnimes: List<Anime>,
-    totalFavorites: Int,
     fanLevel: String,
     triviaPlayedCount: Int
 ) {
@@ -233,14 +231,12 @@ private fun ProfileContent(
         item {
             ProfileHeader(
                 profile = profile,
-                fanLevel = fanLevel,
-                totalFavorites = totalFavorites
+                fanLevel = fanLevel
             )
         }
 
         item {
             ProfileStatsRow(
-                totalFavorites = totalFavorites,
                 fanLevel = fanLevel,
                 triviaPlayedCount = triviaPlayedCount
             )
@@ -318,8 +314,7 @@ private fun ProfileContent(
 @Composable
 private fun ProfileHeader(
     profile: UserProfile,
-    fanLevel: String,
-    totalFavorites: Int
+    fanLevel: String
 ) {
     val displayName = profile.name.ifBlank {
         profile.nickname.ifBlank { "Invitado" }
@@ -380,11 +375,6 @@ private fun ProfileHeader(
                 text = fanLevel,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary
-            )
-
-            Text(
-                text = "Favoritos: $totalFavorites",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -470,7 +460,6 @@ private fun AvatarImage(
 
 @Composable
 private fun ProfileStatsRow(
-    totalFavorites: Int,
     fanLevel: String,
     triviaPlayedCount: Int
 ) {
@@ -482,21 +471,14 @@ private fun ProfileStatsRow(
     ) {
         Box(modifier = Modifier.weight(1f)) {
             ProfileStatCard(
-                title = "Favoritos",
-                value = totalFavorites.toString()
-            )
-        }
-
-        Box(modifier = Modifier.weight(1f)) {
-            ProfileStatCard(
-                title = "Nivel fan",
+                title = "Nivel de fan",
                 value = fanLevel
             )
         }
 
         Box(modifier = Modifier.weight(1f)) {
             ProfileStatCard(
-                title = "Trivias jugadas",
+                title = "Trivias resueltas",
                 value = triviaPlayedCount.toString()
             )
         }
@@ -519,17 +501,17 @@ private fun ProfileStatCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = value,
-                fontWeight = FontWeight.Bold,
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = title,
-                style = MaterialTheme.typography.bodySmall,
+                text = value,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -566,7 +548,7 @@ private fun FavoriteAnimeCard(anime: Anime) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = anime.genres.take(2).map { it.name }.joinToString(" • "),
+                    text = anime.genres.map { it.name }.take(2).joinToString(" • "),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -627,26 +609,25 @@ private fun ProfileContentPreview() {
                     nickname = "hokagefan",
                     email = "naruto@konoha.com",
                     avatarUrl = "",
-                    knowledgeLevel = "Principiante",
-                    xpPoints = 0,
-                    biography = "",
-                    totalAnimesWatched = 0,
+                    knowledgeLevel = "Genin",
+                    xpPoints = 1500,
+                    biography = "¡El próximo Hokage!",
+                    totalAnimesWatched = 720,
                     completedTrivias = 7,
-                    preferredDurations = listOf(
-                        DurationType.SHORT,
-                        DurationType.MEDIUM
-                    ),
                     favoriteGenres = listOf(
                         FakeDataSource.genres.first(),
                         FakeDataSource.genres[1]
                     ),
-                    badges = emptyList(),
-                    favoriteQuote = null,
+                    preferredDurations = listOf(
+                        DurationType.SHORT,
+                        DurationType.MEDIUM
+                    ),
+                    badges = listOf("Héroe de la Aldea"),
+                    favoriteQuote = "¡Dattebayo!",
                     coverImageUrl = ""
                 ),
                 favoriteAnimes = FakeDataSource.animeCatalog.take(3),
-                totalFavorites = 3,
-                fanLevel = "Otaku maestro",
+                fanLevel = "OtakuPro",
                 triviaPlayedCount = 7
             )
         }

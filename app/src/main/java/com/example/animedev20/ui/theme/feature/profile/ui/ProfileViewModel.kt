@@ -93,7 +93,7 @@ class ProfileViewModel(
                     return@combine null
                 }
 
-                val triviaPlayedCount = profile.completedTrivias
+                val triviaResolvedCount = profile.completedTrivias
                 val favoriteCount = favoriteAnimes.size
 
                 ProfileUiState(
@@ -103,9 +103,9 @@ class ProfileViewModel(
                     totalFavorites = favoriteCount,
                     fanLevel = buildFanLevel(
                         favoriteCount = favoriteCount,
-                        triviaCount = triviaPlayedCount
+                        triviaCount = triviaResolvedCount
                     ),
-                    triviaPlayedCount = triviaPlayedCount,
+                    triviaPlayedCount = triviaResolvedCount,
                     errorMessage = null
                 )
             }.collect { state ->
@@ -114,19 +114,44 @@ class ProfileViewModel(
         }
     }
 
-    // Fan level score = interacciones positivas acumuladas
-    // 0-5 puntos: Explorador del anime
-    // 6-11 puntos: Fan en crecimiento
-    // 12-19 puntos: Muy fan del anime
-    // 20+ puntos: Otaku maestro
+    /**
+     * Escala de nivel fan basada en la combinación de favoritos y trivias resueltas:
+     *
+     * a) Novato:
+     *    - no más de 10 animes en favoritos
+     *    - menos de 6 trivias resueltas
+     *
+     * b) Aprendiz:
+     *    - entre 11 y 20 favoritos
+     *    - menos de 11 trivias resueltas
+     *
+     * c) OtakuPro:
+     *    - entre 20 y 26 favoritos
+     *    - entre 11 y 15 trivias resueltas
+     *
+     * d) Top Global:
+     *    - más de 26 favoritos
+     *    - más de 15 trivias resueltas
+     *
+     * Para evitar zonas ambiguas entre rangos, se priorizan primero los niveles
+     * superiores y luego se aplica una degradación razonable cuando el usuario
+     * supera parcialmente un umbral.
+     */
     private fun buildFanLevel(favoriteCount: Int, triviaCount: Int): String {
-        val score = favoriteCount + triviaCount
-
         return when {
-            score >= 20 -> "Otaku maestro"
-            score >= 12 -> "Muy fan del anime"
-            score >= 6 -> "Fan en crecimiento"
-            else -> "Explorador del anime"
+            favoriteCount > 26 && triviaCount > 15 -> "Top Global"
+
+            favoriteCount in 20..26 && triviaCount in 11..15 -> "OtakuPro"
+
+            favoriteCount in 11..20 && triviaCount < 11 -> "Aprendiz"
+
+            favoriteCount <= 10 && triviaCount < 6 -> "Novato"
+
+            // Casos intermedios o mixtos: se asigna el nivel más cercano superior
+            favoriteCount > 26 || triviaCount > 15 -> "Top Global"
+            favoriteCount >= 20 || triviaCount >= 11 -> "OtakuPro"
+            favoriteCount >= 11 || triviaCount >= 6 -> "Aprendiz"
+            else -> "Novato"
         }
     }
 
