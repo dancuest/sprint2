@@ -63,12 +63,16 @@ fun HomeScreen(
 
     when (val state = uiState) {
         HomeUiState.Loading -> HomeLoadingState()
+
         is HomeUiState.Error -> HomeErrorState(
             message = state.message,
             onRetry = viewModel::loadHomeContent
         )
+
         is HomeUiState.Success -> HomeSuccessContent(
             homeContent = state.homeContent,
+            selectedGenreId = state.selectedGenreId,
+            onToggleGenre = viewModel::toggleGenreFilter,
             onAnimeSelected = onAnimeSelected
         )
     }
@@ -78,11 +82,21 @@ fun HomeScreen(
 @Composable
 private fun HomeSuccessContent(
     homeContent: HomeContent,
+    selectedGenreId: String?,
+    onToggleGenre: (String) -> Unit,
     onAnimeSelected: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val sections = homeContent.sections.filter { section ->
+    val baseSections = homeContent.sections.filter { section ->
         section.animes.isNotEmpty() || section.genre.id == "recommendations"
+    }
+
+    val sections = if (selectedGenreId == null) {
+        baseSections
+    } else {
+        baseSections.filter { section ->
+            section.genre.id == "recommendations" || section.genre.id == selectedGenreId
+        }
     }
 
     LazyColumn(
@@ -93,17 +107,20 @@ private fun HomeSuccessContent(
     ) {
         item {
             Text(
-                text = "Empezemos a entretenernos juntos",
+                text = "Empecemos a entretenernos juntos",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
+
             Text(
                 text = "Estas son las recomendaciones pensadas para ti",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
+
             Spacer(modifier = Modifier.height(12.dp))
+
             HeroRecommendation(
                 anime = homeContent.heroAnime,
                 onAnimeSelected = onAnimeSelected
@@ -111,7 +128,11 @@ private fun HomeSuccessContent(
         }
 
         item {
-            PreferredGenresSection(preferredGenres = homeContent.preferredGenres)
+            PreferredGenresSection(
+                preferredGenres = homeContent.preferredGenres,
+                selectedGenreId = selectedGenreId,
+                onToggleGenre = onToggleGenre
+            )
         }
 
         items(sections, key = { it.genre.id }) { section ->
@@ -173,11 +194,13 @@ private fun HeroRecommendation(
                     style = MaterialTheme.typography.labelLarge,
                     color = Color.White.copy(alpha = 0.8f)
                 )
+
                 Text(
                     text = anime.title,
                     style = MaterialTheme.typography.headlineSmall,
                     color = Color.White
                 )
+
                 Text(
                     text = anime.synopsis,
                     style = MaterialTheme.typography.bodyMedium,
@@ -195,6 +218,8 @@ private fun HeroRecommendation(
 @Composable
 private fun PreferredGenresSection(
     preferredGenres: List<Genre>,
+    selectedGenreId: String?,
+    onToggleGenre: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -203,7 +228,11 @@ private fun PreferredGenresSection(
             .padding(horizontal = 16.dp, vertical = 20.dp)
     ) {
         Text(
-            text = "Tus géneros (${preferredGenres.size})",
+            text = if (selectedGenreId == null) {
+                "Tus géneros (${preferredGenres.size})"
+            } else {
+                "Filtrando por género"
+            },
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -214,10 +243,11 @@ private fun PreferredGenresSection(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             preferredGenres.forEach { genre ->
+                val isSelected = selectedGenreId == genre.id
+
                 FilterChip(
-                    selected = true,
-                    onClick = {},
-                    enabled = false,
+                    selected = isSelected,
+                    onClick = { onToggleGenre(genre.id) },
                     label = { Text(genre.name) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
@@ -295,6 +325,7 @@ private fun AnimeCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
                 Text(
                     text = anime.genres.joinToString { it.name },
                     style = MaterialTheme.typography.labelMedium,
@@ -326,8 +357,13 @@ private fun HomeErrorState(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = message, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge
+        )
+
         Spacer(modifier = Modifier.height(12.dp))
+
         Button(onClick = onRetry) {
             Text(text = "Reintentar")
         }
@@ -345,6 +381,8 @@ private fun HomeSuccessPreview() {
                     preferredGenres = FakeDataSource.preferredGenres,
                     sections = FakeDataSource.buildSectionsForGenres(FakeDataSource.preferredGenres)
                 ),
+                selectedGenreId = null,
+                onToggleGenre = {},
                 onAnimeSelected = {}
             )
         }

@@ -30,21 +30,24 @@ class HomeViewModel(
     }
 
     fun loadHomeContent() {
+        val previousSelectedGenreId = (_uiState.value as? HomeUiState.Success)?.selectedGenreId
+
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            // Solo muestra Loading si no había contenido previo exitoso
             if (_uiState.value !is HomeUiState.Success) {
                 _uiState.value = HomeUiState.Loading
             }
 
             val result = getHomeContentUseCase()
+
             result.fold(
                 onSuccess = { homeContent ->
-                    _uiState.value = HomeUiState.Success(homeContent)
+                    _uiState.value = HomeUiState.Success(
+                        homeContent = homeContent,
+                        selectedGenreId = previousSelectedGenreId
+                    )
                 },
                 onFailure = { throwable ->
-                    // Si ya había contenido exitoso visible, NO pisamos con error.
-                    // Dejamos el contenido anterior y reintentamos silenciosamente.
                     if (_uiState.value is HomeUiState.Success) {
                         scheduleRetry()
                     } else {
@@ -57,14 +60,33 @@ class HomeViewModel(
         }
     }
 
+    fun toggleGenreFilter(genreId: String) {
+        val currentState = _uiState.value as? HomeUiState.Success ?: return
+
+        val updatedGenreId = if (currentState.selectedGenreId == genreId) {
+            null
+        } else {
+            genreId
+        }
+
+        _uiState.value = currentState.copy(selectedGenreId = updatedGenreId)
+    }
+
     private fun scheduleRetry() {
+        val previousState = _uiState.value as? HomeUiState.Success
+        val previousSelectedGenreId = previousState?.selectedGenreId
+
         viewModelScope.launch {
             delay(4_000L)
+
             val result = getHomeContentUseCase()
             result.onSuccess { homeContent ->
-                _uiState.value = HomeUiState.Success(homeContent)
+                _uiState.value = HomeUiState.Success(
+                    homeContent = homeContent,
+                    selectedGenreId = previousSelectedGenreId
+                )
             }
-            // Si falla de nuevo, se mantiene el contenido anterior visible
+            // Si falla de nuevo, se mantiene el contenido anterior visible.
         }
     }
 
