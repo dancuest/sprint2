@@ -19,7 +19,7 @@ class GetHomeContentUseCase(
         private const val MAX_ATTEMPTS_PER_GENRE = 2
         private const val TARGET_SECTION_SIZE = 10
 
-        // ID del género "Action" en Jikan como fallback para el hero
+        // ID del género "Action" en Jikan como fallback final del hero
         private const val FALLBACK_GENRE_ID = "1"
     }
 
@@ -30,28 +30,32 @@ class GetHomeContentUseCase(
             emptyList()
         }.distinctBy { it.id }
 
-        val heroAnime = resolveHeroAnime(preferredGenres)
+        val adaptiveRecommendations = runCatching {
+            animeRepository.getAdaptiveRecommendations()
+        }.getOrElse {
+            emptyList()
+        }.distinctBy { it.id }
+
+        val heroAnime = adaptiveRecommendations.firstOrNull()
+            ?: resolveHeroAnime(preferredGenres)
             ?: return Result.failure(
                 Exception("No se pudo cargar el contenido principal. Verifica tu conexión.")
             )
 
-        val usedAnimeIds = mutableSetOf<Long>()
-        usedAnimeIds.add(heroAnime.id)
+        val usedAnimeIds = linkedSetOf<Long>()
+        usedAnimeIds += heroAnime.id
 
         val sections = mutableListOf<AnimeSection>()
 
-        val recommendationCandidates = runCatching {
-            animeRepository.getAdaptiveRecommendations()
-        }.getOrElse {
-            emptyList()
-        }
-
-        val recommendationList = recommendationCandidates
+        // “Para Ti” se mantiene: toma las demás recomendaciones adaptativas,
+        // excluyendo el hero para no duplicarlo.
+        val recommendationList = adaptiveRecommendations
+            .drop(1)
             .filterNot { it.id in usedAnimeIds }
             .take(TARGET_SECTION_SIZE)
 
         if (recommendationList.isNotEmpty()) {
-            usedAnimeIds.addAll(recommendationList.map { it.id })
+            usedAnimeIds += recommendationList.map { it.id }
             sections += AnimeSection(
                 genre = Genre("recommendations", "Para Ti"),
                 animes = recommendationList
@@ -67,7 +71,7 @@ class GetHomeContentUseCase(
                 .take(TARGET_SECTION_SIZE)
 
             if (uniqueItems.isNotEmpty()) {
-                usedAnimeIds.addAll(uniqueItems.map { it.id })
+                usedAnimeIds += uniqueItems.map { it.id }
                 sections += AnimeSection(
                     genre = genre,
                     animes = uniqueItems
@@ -110,19 +114,10 @@ class GetHomeContentUseCase(
 
     /**
      * Resuelve el anime hero con fallback progresivo:
-     * 1. Recomendación adaptativa del backend
-     * 2. Primer anime del primer género preferido del usuario
-     * 3. Primer anime del género Action (id=1) como último recurso
+     * 1. Primer anime del primer género preferido del usuario
+     * 2. Primer anime del género Action (id=1) como último recurso
      */
     private suspend fun resolveHeroAnime(preferredGenres: List<Genre>): Anime? {
-        runCatching {
-            animeRepository.getHeroRecommendation()
-        }.onSuccess { hero ->
-            if (hero != null) {
-                return hero
-            }
-        }
-
         if (preferredGenres.isNotEmpty()) {
             runCatching {
                 animeRepository.getAnimesByGenre(preferredGenres.first().id).firstOrNull()
