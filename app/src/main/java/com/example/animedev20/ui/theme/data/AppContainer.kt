@@ -38,7 +38,7 @@ interface AppContainer {
     val userRepository: UserRepository
     val interactionRepository: InteractionRepository
     val homeRefreshBus: HomeRefreshBus
-    val usersApi: UsersApi? // ← expuesto para SettingsViewModel (cambio de contraseña)
+    val usersApi: UsersApi?
 }
 
 class DefaultAppContainer(

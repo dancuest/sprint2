@@ -26,6 +26,7 @@ import com.example.animedev20.ui.theme.navigation.AppNavHost
 import com.example.animedev20.ui.theme.navigation.BottomNavigationBar
 import com.example.animedev20.ui.theme.navigation.Screen
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
+import retrofit2.HttpException
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,22 +57,10 @@ fun MainScreen() {
             initialValue = null,
             key1 = sessionFingerprint
         ) {
-            val destination = if (sessionFingerprint == null) {
-                Screen.AuthWelcome.route
-            } else {
-                runCatching {
-                    val settings = appContainer.userRepository.getUserSettings()
-                    if (settings.hasCompletedOnboarding) {
-                        Screen.Home.route
-                    } else {
-                        Screen.Onboarding.route
-                    }
-                }.getOrElse {
-                    Screen.AuthWelcome.route
-                }
-            }
-
-            value = destination
+            value = resolveStartDestination(
+                sessionFingerprint = sessionFingerprint,
+                appContainer = appContainer
+            )
         }
 
         if (startDestination == null) {
@@ -106,6 +95,35 @@ fun MainScreen() {
                     appContainer = appContainer
                 )
             }
+        }
+    }
+}
+
+private suspend fun resolveStartDestination(
+    sessionFingerprint: String?,
+    appContainer: DefaultAppContainer
+): String {
+    if (sessionFingerprint == null) {
+        return Screen.AuthWelcome.route
+    }
+
+    return runCatching {
+        val settings = appContainer.userRepository.getUserSettings()
+        if (settings.hasCompletedOnboarding) {
+            Screen.Home.route
+        } else {
+            Screen.Onboarding.route
+        }
+    }.getOrElse { error ->
+        when (error) {
+            is HttpException -> {
+                if (error.code() == 401 || error.code() == 403) {
+                    Screen.AuthWelcome.route
+                } else {
+                    Screen.Onboarding.route
+                }
+            }
+            else -> Screen.Onboarding.route
         }
     }
 }
