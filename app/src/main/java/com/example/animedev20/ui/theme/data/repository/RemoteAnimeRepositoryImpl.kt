@@ -76,11 +76,18 @@ class RemoteAnimeRepositoryImpl(
         return try {
             animeApi.getAdaptiveRecommendations().data
         } catch (error: HttpException) {
-            Log.w(TAG, "Adaptive recommendations failed code=${error.code()}, using top fallback")
-            animeApi.getTop(limit = 10).data
+            Log.w(
+                TAG,
+                "Adaptive recommendations failed code=${error.code()}, returning empty list for explicit fallback handling"
+            )
+            emptyList()
         } catch (error: Exception) {
-            Log.w(TAG, "Adaptive recommendations failed, using top fallback", error)
-            animeApi.getTop(limit = 10).data
+            Log.w(
+                TAG,
+                "Adaptive recommendations failed, returning empty list for explicit fallback handling",
+                error
+            )
+            emptyList()
         }
     }
 
