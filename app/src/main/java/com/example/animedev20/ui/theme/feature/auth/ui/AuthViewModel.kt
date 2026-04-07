@@ -61,7 +61,7 @@ class AuthViewModel(
                 )
             )
             persistSession(response)
-            navigateAccordingToSettings()
+            navigateToRoute(resolveRouteAfterLogin())
         }
     }
 
@@ -87,7 +87,7 @@ class AuthViewModel(
             )
 
             persistSession(response)
-            navigateAccordingToSettings()
+            navigateToRoute(resolveRouteAfterRegistration())
         }
     }
 
@@ -200,19 +200,50 @@ class AuthViewModel(
             ?.let(tokenStore::saveDeviceId)
     }
 
-    private suspend fun navigateAccordingToSettings() {
-        val nextRoute = runCatching {
+    private suspend fun resolveRouteAfterLogin(): String {
+        return resolveRouteAfterAuthentication(
+            defaultRouteWhenProfileExists = Screen.Home.route,
+            defaultRouteWhenEverythingFails = Screen.Home.route
+        )
+    }
+
+    private suspend fun resolveRouteAfterRegistration(): String {
+        return resolveRouteAfterAuthentication(
+            defaultRouteWhenProfileExists = Screen.Onboarding.route,
+            defaultRouteWhenEverythingFails = Screen.Onboarding.route
+        )
+    }
+
+    private suspend fun resolveRouteAfterAuthentication(
+        defaultRouteWhenProfileExists: String,
+        defaultRouteWhenEverythingFails: String
+    ): String {
+        val routeFromSettings = runCatching {
             val settings = userRepository.getUserSettings()
             if (settings.hasCompletedOnboarding) {
                 Screen.Home.route
             } else {
                 Screen.Onboarding.route
             }
-        }.getOrElse {
-            Screen.Onboarding.route
+        }.getOrNull()
+
+        if (routeFromSettings != null) {
+            return routeFromSettings
         }
 
-        navigateToRoute(nextRoute)
+        val profile = runCatching {
+            userRepository.getUserProfile()
+        }.getOrNull()
+
+        if (profile != null && profile.id.isNotBlank()) {
+            return if (profile.email.isBlank()) {
+                Screen.Onboarding.route
+            } else {
+                defaultRouteWhenProfileExists
+            }
+        }
+
+        return defaultRouteWhenEverythingFails
     }
 
     private fun navigateToRoute(route: String) {

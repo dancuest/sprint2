@@ -107,7 +107,7 @@ private suspend fun resolveStartDestination(
         return Screen.AuthWelcome.route
     }
 
-    return runCatching {
+    val routeFromSettings = runCatching {
         val settings = appContainer.userRepository.getUserSettings()
         if (settings.hasCompletedOnboarding) {
             Screen.Home.route
@@ -115,15 +115,27 @@ private suspend fun resolveStartDestination(
             Screen.Onboarding.route
         }
     }.getOrElse { error ->
-        when (error) {
-            is HttpException -> {
-                if (error.code() == 401 || error.code() == 403) {
-                    Screen.AuthWelcome.route
-                } else {
-                    Screen.Onboarding.route
-                }
-            }
-            else -> Screen.Onboarding.route
+        if (error is HttpException && (error.code() == 401 || error.code() == 403)) {
+            return Screen.AuthWelcome.route
+        }
+        null
+    }
+
+    if (routeFromSettings != null) {
+        return routeFromSettings
+    }
+
+    val profile = runCatching {
+        appContainer.userRepository.getUserProfile()
+    }.getOrNull()
+
+    if (profile != null && profile.id.isNotBlank()) {
+        return if (profile.email.isBlank()) {
+            Screen.Onboarding.route
+        } else {
+            Screen.Home.route
         }
     }
+
+    return Screen.AuthWelcome.route
 }

@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class RemoteFavoritesRepositoryImpl(
     private val animeApi: AnimeApi,
@@ -26,11 +28,18 @@ class RemoteFavoritesRepositoryImpl(
     }
 
     private val favoriteAnimes = MutableStateFlow<List<Anime>>(emptyList())
+    private val refreshMutex = Mutex()
 
     override val favorites: Flow<List<Anime>> = favoriteAnimes.asStateFlow()
 
     init {
         scope.launch {
+            refreshFavorites()
+        }
+    }
+
+    override suspend fun refreshFavorites() {
+        refreshMutex.withLock {
             runCatching {
                 val favoriteIds = animeApi.getMyFavoriteIds().data.distinct()
 
@@ -53,7 +62,7 @@ class RemoteFavoritesRepositoryImpl(
                 favoriteAnimes.value = restoredFavorites
             }.onFailure { error ->
                 Log.w(TAG, "No se pudieron restaurar los favoritos remotos", error)
-                favoriteAnimes.value = emptyList()
+                // NO vaciar el estado actual en fallos transitorios
             }
         }
     }

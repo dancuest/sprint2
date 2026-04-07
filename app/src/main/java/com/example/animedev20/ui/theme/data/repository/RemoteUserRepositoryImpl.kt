@@ -6,7 +6,6 @@ import com.example.animedev20.ui.theme.data.remote.AnimeApi
 import com.example.animedev20.ui.theme.data.remote.AuthApiPlain
 import com.example.animedev20.ui.theme.data.remote.AuthTokenStore
 import com.example.animedev20.ui.theme.data.remote.ChangePasswordRequest
-import com.example.animedev20.ui.theme.data.remote.DeviceLoginRequest
 import com.example.animedev20.ui.theme.data.remote.GenreDto
 import com.example.animedev20.ui.theme.data.remote.UpdateProfileRequest
 import com.example.animedev20.ui.theme.data.remote.UpdateSettingsRequest
@@ -156,10 +155,11 @@ class RemoteUserRepositoryImpl(
     private suspend fun ensureAuthenticated() {
         initialize(context)
 
-        if (tokenStore.getToken().isNullOrBlank()) {
-            val login = authApi.loginDevice(DeviceLoginRequest(deviceId))
-            tokenStore.saveToken(login.accessToken)
-            tokenStore.saveUserId(login.userId)
+        val token = tokenStore.getToken()
+        val userId = tokenStore.getUserId()
+
+        if (token.isNullOrBlank() || userId.isNullOrBlank()) {
+            throw IllegalStateException("No hay una sesión activa válida. Inicia sesión nuevamente.")
         }
     }
 

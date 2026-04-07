@@ -19,7 +19,7 @@ class GetHomeContentUseCase(
         private const val MAX_ATTEMPTS_PER_GENRE = 2
         private const val TARGET_SECTION_SIZE = 10
 
-        // ID del género "Action" en Jikan como fallback final del hero
+        // ID del género "Action" en Jikan como fallback final del hero y de refuerzo.
         private const val FALLBACK_GENRE_ID = "1"
     }
 
@@ -42,17 +42,16 @@ class GetHomeContentUseCase(
                 Exception("No se pudo cargar el contenido principal. Verifica tu conexión.")
             )
 
+        val recommendationList = resolveRecommendationList(
+            heroAnime = heroAnime,
+            adaptiveRecommendations = adaptiveRecommendations,
+            preferredGenres = preferredGenres
+        )
+
         val usedAnimeIds = linkedSetOf<Long>()
         usedAnimeIds += heroAnime.id
 
         val sections = mutableListOf<AnimeSection>()
-
-        // “Para Ti” se mantiene: toma las demás recomendaciones adaptativas,
-        // excluyendo el hero para no duplicarlo.
-        val recommendationList = adaptiveRecommendations
-            .drop(1)
-            .filterNot { it.id in usedAnimeIds }
-            .take(TARGET_SECTION_SIZE)
 
         if (recommendationList.isNotEmpty()) {
             usedAnimeIds += recommendationList.map { it.id }
@@ -90,6 +89,48 @@ class GetHomeContentUseCase(
         Result.failure(e)
     }
 
+    private suspend fun resolveRecommendationList(
+        heroAnime: Anime,
+        adaptiveRecommendations: List<Anime>,
+        preferredGenres: List<Genre>
+    ): List<Anime> {
+        val uniqueRecommendations = linkedMapOf<Long, Anime>()
+
+        adaptiveRecommendations
+            .asSequence()
+            .filterNot { it.id == heroAnime.id }
+            .forEach { anime ->
+                if (uniqueRecommendations.size < TARGET_SECTION_SIZE) {
+                    uniqueRecommendations.putIfAbsent(anime.id, anime)
+                }
+            }
+
+        if (uniqueRecommendations.size >= TARGET_SECTION_SIZE) {
+            return uniqueRecommendations.values.toList()
+        }
+
+        val candidateGenreIds = buildList {
+            addAll(preferredGenres.map { it.id })
+            addAll(heroAnime.genres.map { it.id })
+            add(FALLBACK_GENRE_ID)
+        }.distinct()
+
+        for (genreId in candidateGenreIds) {
+            val candidates = loadGenreCandidates(genreId)
+
+            for (anime in candidates) {
+                if (anime.id == heroAnime.id) continue
+                uniqueRecommendations.putIfAbsent(anime.id, anime)
+
+                if (uniqueRecommendations.size >= TARGET_SECTION_SIZE) {
+                    return uniqueRecommendations.values.toList()
+                }
+            }
+        }
+
+        return uniqueRecommendations.values.toList()
+    }
+
     private suspend fun loadGenreCandidates(genreId: String): List<Anime> {
         repeat(MAX_ATTEMPTS_PER_GENRE) { attempt ->
             delay(THROTTLE_MS)
@@ -114,8 +155,9 @@ class GetHomeContentUseCase(
 
     /**
      * Resuelve el anime hero con fallback progresivo:
-     * 1. Primer anime del primer género preferido del usuario
-     * 2. Primer anime del género Action (id=1) como último recurso
+     * 1. Primer anime de recomendaciones adaptativas (si existe)
+     * 2. Primer anime del primer género preferido del usuario
+     * 3. Primer anime del género Action (id=1) como último recurso
      */
     private suspend fun resolveHeroAnime(preferredGenres: List<Genre>): Anime? {
         if (preferredGenres.isNotEmpty()) {

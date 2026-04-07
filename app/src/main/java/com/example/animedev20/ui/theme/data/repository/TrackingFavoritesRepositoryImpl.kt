@@ -12,28 +12,56 @@ class TrackingFavoritesRepositoryImpl(
     private val interactionRepository: InteractionRepository,
     private val homeRefreshBus: HomeRefreshBus
 ) : FavoritesRepository {
+
     override val favorites: Flow<List<Anime>> = delegate.favorites
 
+    override suspend fun refreshFavorites() {
+        delegate.refreshFavorites()
+    }
+
     override suspend fun addFavorite(anime: Anime) {
-        delegate.addFavorite(anime)
+        val alreadyFavorite = delegate.isFavorite(anime.id).first()
+        if (alreadyFavorite) return
+
         interactionRepository.trackFavorite(anime.id)
+        delegate.addFavorite(anime)
+
+        runCatching {
+            delegate.refreshFavorites()
+        }
+
         homeRefreshBus.trigger()
     }
 
     override suspend fun removeFavorite(animeId: Long) {
-        delegate.removeFavorite(animeId)
+        val wasFavorite = delegate.isFavorite(animeId).first()
+        if (!wasFavorite) return
+
         interactionRepository.trackUnfavorite(animeId)
+        delegate.removeFavorite(animeId)
+
+        runCatching {
+            delegate.refreshFavorites()
+        }
+
         homeRefreshBus.trigger()
     }
 
     override suspend fun toggleFavorite(anime: Anime) {
         val wasFavorite = delegate.isFavorite(anime.id).first()
-        delegate.toggleFavorite(anime)
+
         if (wasFavorite) {
             interactionRepository.trackUnfavorite(anime.id)
+            delegate.removeFavorite(anime.id)
         } else {
             interactionRepository.trackFavorite(anime.id)
+            delegate.addFavorite(anime)
         }
+
+        runCatching {
+            delegate.refreshFavorites()
+        }
+
         homeRefreshBus.trigger()
     }
 

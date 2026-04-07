@@ -35,6 +35,7 @@ class ProfileViewModel(
             try {
                 userRepository.getUserProfile()
                 userRepository.getUserSettings()
+                runCatching { favoritesRepository.refreshFavorites() }
             } catch (error: Throwable) {
                 _uiState.update {
                     it.copy(
@@ -94,7 +95,7 @@ class ProfileViewModel(
                 }
 
                 val triviaResolvedCount = profile.completedTrivias
-                val favoriteCount = favoriteAnimes.size
+                val favoriteCount = profile.totalAnimesWatched
 
                 ProfileUiState(
                     isLoading = false,
@@ -114,43 +115,11 @@ class ProfileViewModel(
         }
     }
 
-    /**
-     * Escala de nivel fan basada en la combinación de favoritos y trivias resueltas:
-     *
-     * a) Novato:
-     *    - no más de 10 animes en favoritos
-     *    - menos de 6 trivias resueltas
-     *
-     * b) Aprendiz:
-     *    - entre 11 y 20 favoritos
-     *    - menos de 11 trivias resueltas
-     *
-     * c) OtakuPro:
-     *    - entre 20 y 26 favoritos
-     *    - entre 11 y 15 trivias resueltas
-     *
-     * d) Top Global:
-     *    - más de 26 favoritos
-     *    - más de 15 trivias resueltas
-     *
-     * Para evitar zonas ambiguas entre rangos, se priorizan primero los niveles
-     * superiores y luego se aplica una degradación razonable cuando el usuario
-     * supera parcialmente un umbral.
-     */
     private fun buildFanLevel(favoriteCount: Int, triviaCount: Int): String {
         return when {
-            favoriteCount > 26 && triviaCount > 15 -> "Top Global"
-
-            favoriteCount in 20..26 && triviaCount in 11..15 -> "OtakuPro"
-
-            favoriteCount in 11..20 && triviaCount < 11 -> "Aprendiz"
-
-            favoriteCount <= 10 && triviaCount < 6 -> "Novato"
-
-            // Casos intermedios o mixtos: se asigna el nivel más cercano superior
-            favoriteCount > 26 || triviaCount > 15 -> "Top Global"
-            favoriteCount >= 20 || triviaCount >= 11 -> "OtakuPro"
-            favoriteCount >= 11 || triviaCount >= 6 -> "Aprendiz"
+            favoriteCount >= 20 && triviaCount >= 12 -> "Top Global"
+            favoriteCount >= 15 && triviaCount >= 10 -> "OtakuPro"
+            favoriteCount >= 7 && triviaCount >= 7 -> "Aprendiz"
             else -> "Novato"
         }
     }

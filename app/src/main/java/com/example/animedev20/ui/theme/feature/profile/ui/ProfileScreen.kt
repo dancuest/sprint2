@@ -247,8 +247,7 @@ private fun ProfileContent(
     ) {
         item {
             ProfileHeader(
-                profile = profile,
-                fanLevel = fanLevel
+                profile = profile
             )
         }
 
@@ -348,7 +347,7 @@ private fun FanLevelInfoDialog(
             ) {
                 IconButton(
                     onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.TopStart)
+                    modifier = Modifier.align(Alignment.TopEnd)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Close,
@@ -369,7 +368,7 @@ private fun FanLevelInfoDialog(
                     )
 
                     Text(
-                        text = "Los niveles se calculan con la combinación de animes en favoritos y trivias resueltas.",
+                        text = "Los niveles se calculan según la cantidad de animes en favoritos y trivias jugadas.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -380,7 +379,7 @@ private fun FanLevelInfoDialog(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "No más de 10 animes en favoritos y menos de 6 trivias resueltas.",
+                        text = "Se mantiene mientras no alcances al menos 7 animes en favoritos y 7 trivias jugadas.",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -390,7 +389,7 @@ private fun FanLevelInfoDialog(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Entre 11 y 20 animes en favoritos y menos de 11 trivias resueltas.",
+                        text = "Se alcanza con 7 animes en favoritos y 7 trivias jugadas.",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -400,7 +399,7 @@ private fun FanLevelInfoDialog(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Entre 20 y 26 animes en favoritos y entre 11 y 15 trivias resueltas.",
+                        text = "Se alcanza con 15 animes en favoritos y 10 trivias jugadas.",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -410,7 +409,7 @@ private fun FanLevelInfoDialog(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Más de 26 animes en favoritos y más de 15 trivias resueltas.",
+                        text = "Se alcanza con 20 animes en favoritos y 12 trivias jugadas.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -421,8 +420,7 @@ private fun FanLevelInfoDialog(
 
 @Composable
 private fun ProfileHeader(
-    profile: UserProfile,
-    fanLevel: String
+    profile: UserProfile
 ) {
     val displayName = profile.name.ifBlank {
         profile.nickname.ifBlank { "Invitado" }
@@ -475,14 +473,6 @@ private fun ProfileHeader(
             Text(
                 text = "@$nickname",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = fanLevel,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -738,25 +728,24 @@ private fun ProfileContentPreview() {
                     nickname = "hokagefan",
                     email = "naruto@konoha.com",
                     avatarUrl = "",
-                    knowledgeLevel = "Novato",
+                    knowledgeLevel = "Aprendiz",
                     xpPoints = 100,
                     biography = "El próximo Hokage",
-                    totalAnimesWatched = 0,
-                    completedTrivias = 7,
-                    preferredDurations = listOf(
-                        DurationType.SHORT,
-                        DurationType.MEDIUM
-                    ),
                     favoriteGenres = listOf(
                         FakeDataSource.genres.first(),
                         FakeDataSource.genres[1]
                     ),
+                    preferredDurations = listOf(
+                        DurationType.SHORT,
+                        DurationType.MEDIUM
+                    ),
+                    totalAnimesWatched = 0,
+                    completedTrivias = 7,
                     badges = emptyList(),
-                    favoriteQuote = "¡Vaya que sí!",
                     coverImageUrl = ""
                 ),
                 favoriteAnimes = FakeDataSource.animeCatalog.take(3),
-                fanLevel = "OtakuPro",
+                fanLevel = "Aprendiz",
                 triviaPlayedCount = 7
             )
         }
