@@ -215,7 +215,7 @@ class RemoteUserRepositoryImpl(
     private suspend fun ensureGenresCache() {
         if (cachedGenresById.isNotEmpty()) return
 
-        val genres = animeApi.getGenres().data
+        val genres = animeApi.getGenres(includeAdult = true).data
         cachedGenresById = genres.mapNotNull { genre ->
             genre.id.toIntOrNull()?.let { id -> id to GenreDto(id = id, name = genre.name) }
         }.toMap()
