@@ -19,7 +19,14 @@ class RemoteAnimeRepositoryImpl(
     override suspend fun getHeroRecommendation(): Anime {
         val fallback = suspend {
             val response = animeApi.getTop(limit = 1)
-            response.data.firstOrNull() ?: throw Exception("No se encontró un anime destacado.")
+            val topAnime = response.data.firstOrNull()
+                ?: throw Exception("No se encontró un anime destacado.")
+
+            try {
+                animeApi.getDetail(topAnime.id).data.anime
+            } catch (error: Exception) {
+                topAnime
+            }
         }
 
         return fetchWithFallback(

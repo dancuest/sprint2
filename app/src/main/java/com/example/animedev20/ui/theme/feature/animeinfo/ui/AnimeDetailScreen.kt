@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,7 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
@@ -25,8 +26,6 @@ import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -50,7 +49,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,7 +58,6 @@ import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
 import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.AnimeDetail
-import com.example.animedev20.ui.theme.domain.model.Trailer
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.EmissionStatus
 import com.example.animedev20.ui.theme.domain.model.Genre
@@ -71,7 +68,6 @@ fun AnimeDetailScreen(
     animeId: Long,
     appContainer: AppContainer = DefaultAppContainer(),
     onBack: () -> Unit,
-    onPlayRequested: (Long) -> Unit = {},
     onTriviaRequested: (Long) -> Unit = {}
 ) {
     val viewModel: AnimeDetailViewModel = viewModel(
@@ -82,10 +78,12 @@ fun AnimeDetailScreen(
             interactionRepository = appContainer.interactionRepository
         )
     )
+
     val uiState by viewModel.uiState.collectAsState()
 
     when (val state = uiState) {
         AnimeDetailUiState.Loading -> AnimeDetailLoading()
+
         is AnimeDetailUiState.Error -> AnimeDetailError(
             message = state.message,
             onRetry = viewModel::loadAnimeDetail,
@@ -96,7 +94,6 @@ fun AnimeDetailScreen(
             detail = state.detail,
             isFavorite = state.isFavorite,
             onBack = onBack,
-            onPlay = { onPlayRequested(state.detail.anime.id) },
             onTrivia = { onTriviaRequested(state.detail.anime.id) },
             onFavoriteToggle = viewModel::toggleFavorite
         )
@@ -109,21 +106,27 @@ private fun AnimeDetailContent(
     detail: AnimeDetail,
     isFavorite: Boolean,
     onBack: () -> Unit,
-    onPlay: () -> Unit,
     onTrivia: () -> Unit,
     onFavoriteToggle: () -> Unit
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         rememberTopAppBarState()
     )
+
     val uriHandler = LocalUriHandler.current
+
     Scaffold(
         topBar = {
             LargeTopAppBar(
-                title = { Text(text = detail.anime.title) },
+                title = {
+                    Text(text = detail.anime.title)
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Volver"
+                        )
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -133,17 +136,31 @@ private fun AnimeDetailContent(
             ExtendedFloatingActionButton(
                 onClick = onFavoriteToggle,
                 icon = {
-                    val icon =
-                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder
+                    val icon = if (isFavorite) {
+                        Icons.Default.Favorite
+                    } else {
+                        Icons.Default.FavoriteBorder
+                    }
+
                     val contentDescription = if (isFavorite) {
                         "Eliminar de favoritos"
                     } else {
                         "Agregar a favoritos"
                     }
-                    Icon(icon, contentDescription = contentDescription)
+
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = contentDescription
+                    )
                 },
                 text = {
-                    Text(if (isFavorite) "En favoritos" else "Agregar a favoritos")
+                    Text(
+                        text = if (isFavorite) {
+                            "En favoritos"
+                        } else {
+                            "Agregar a favoritos"
+                        }
+                    )
                 }
             )
         }
@@ -154,30 +171,34 @@ private fun AnimeDetailContent(
                 .padding(innerPadding),
             contentPadding = PaddingValues(bottom = 48.dp)
         ) {
-            item { AnimeHeroSection(anime = detail.anime) }
+            item {
+                AnimeHeroSection(anime = detail.anime)
+            }
+
             item {
                 ActionButtons(
-                    onPlay = onPlay,
+                    trailerUrl = detail.anime.trailerUrl,
+                    onTrailer = { url -> uriHandler.openUri(url) },
                     onTrivia = onTrivia,
-                    onManga = {
-                        uriHandler.openUri(detail.anime.mangaPlusUrl)
-                    }
+                    mangaUrl = detail.anime.mangaUrl
+                        ?: detail.anime.mangaPlusUrl.takeIf { it.isNotBlank() },
+                    onManga = { url -> uriHandler.openUri(url) }
                 )
             }
-            item { GenreSection(genres = detail.anime.genres) }
+
+            item {
+                GenreSection(genres = detail.anime.genres)
+            }
+
             item {
                 AnimeSynopsis(
                     synopsis = detail.anime.synopsis,
                     culturalNotes = detail.culturalNotes
                 )
             }
-            item { AnimeStats(anime = detail.anime) }
-            item { TrailersHeader(detail.trailers.size) }
-            items(detail.trailers, key = { it.number }) { trailer ->
-                TrailerRow(
-                    trailer = trailer,
-                    onWatch = { url -> uriHandler.openUri(url) }
-                )
+
+            item {
+                AnimeStats(anime = detail.anime)
             }
         }
     }
@@ -196,15 +217,20 @@ private fun AnimeHeroSection(anime: Anime) {
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.7f)
+                        )
                     )
                 )
         )
+
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -215,6 +241,7 @@ private fun AnimeHeroSection(anime: Anime) {
                 style = MaterialTheme.typography.headlineSmall,
                 color = Color.White
             )
+
             Text(
                 text = "${anime.releaseYear ?: "Próximamente"}  •  ${anime.emissionStatus.toReadableText()}",
                 style = MaterialTheme.typography.bodyMedium,
@@ -226,27 +253,66 @@ private fun AnimeHeroSection(anime: Anime) {
 
 @Composable
 private fun ActionButtons(
-    onPlay: () -> Unit,
+    trailerUrl: String?,
+    onTrailer: (String) -> Unit,
     onTrivia: () -> Unit,
-    onManga: () -> Unit
+    mangaUrl: String?,
+    onManga: (String) -> Unit
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
-        Button(onClick = onPlay, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.PlayArrow, contentDescription = null)
-            Spacer(modifier = Modifier.size(8.dp))
-            Text("Ver trailer principal")
+    Column(
+        modifier = Modifier.padding(
+            horizontal = 16.dp,
+            vertical = 24.dp
+        )
+    ) {
+        if (!trailerUrl.isNullOrBlank()) {
+            Button(
+                onClick = { onTrailer(trailerUrl) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null
+                )
+
+                Spacer(modifier = Modifier.size(8.dp))
+
+                Text(text = "Ver trailer oficial")
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedButton(onClick = onTrivia, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Outlined.HelpOutline, contentDescription = null)
+
+        OutlinedButton(
+            onClick = onTrivia,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.HelpOutline,
+                contentDescription = null
+            )
+
             Spacer(modifier = Modifier.size(8.dp))
-            Text("Jugar trivia")
+
+            Text(text = "Jugar trivia")
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedButton(onClick = onManga, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.MenuBook, contentDescription = null)
-            Spacer(modifier = Modifier.size(8.dp))
-            Text("Buscar manga en Manga Plus")
+
+        if (!mangaUrl.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = { onManga(mangaUrl) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MenuBook,
+                    contentDescription = null
+                )
+
+                Spacer(modifier = Modifier.size(8.dp))
+
+                Text(text = "Ver manga relacionado")
+            }
         }
     }
 }
@@ -254,7 +320,10 @@ private fun ActionButtons(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GenreSection(genres: List<Genre>) {
-    if (genres.isEmpty()) return
+    if (genres.isEmpty()) {
+        return
+    }
+
     FlowRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -265,33 +334,52 @@ private fun GenreSection(genres: List<Genre>) {
         genres.forEach { genre ->
             AssistChip(
                 onClick = {},
-                label = { Text(genre.name) },
+                label = {
+                    Text(text = genre.name)
+                },
                 colors = AssistChipDefaults.assistChipColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             )
         }
     }
+
     Spacer(modifier = Modifier.height(12.dp))
 }
 
 @Composable
-private fun AnimeSynopsis(synopsis: String, culturalNotes: List<String>) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+private fun AnimeSynopsis(
+    synopsis: String,
+    culturalNotes: List<String>
+) {
+    Column(
+        modifier = Modifier.padding(
+            horizontal = 16.dp,
+            vertical = 12.dp
+        )
+    ) {
         Text(
             text = "Sinopsis",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
+
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = synopsis, style = MaterialTheme.typography.bodyMedium)
+
+        Text(
+            text = synopsis.ifBlank { "Sinopsis no disponible." },
+            style = MaterialTheme.typography.bodyMedium
+        )
+
         if (culturalNotes.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
+
             Text(
                 text = "Notas culturales",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
+
             culturalNotes.forEach { note ->
                 Text(
                     text = "• $note",
@@ -306,85 +394,65 @@ private fun AnimeSynopsis(synopsis: String, culturalNotes: List<String>) {
 
 @Composable
 private fun AnimeStats(anime: Anime) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp)
+    ) {
         Text(
             text = "Detalles",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
+
         Spacer(modifier = Modifier.height(8.dp))
-        RowOfStats(label = "Episodios", value = anime.totalEpisodes?.toString() ?: "Pendiente")
-        RowOfStats(label = "Duración", value = anime.durationType.toReadableText())
-        RowOfStats(label = "Estado", value = anime.emissionStatus.toReadableText())
+
+        RowOfStats(
+            label = "Episodios",
+            value = anime.totalEpisodes?.toString() ?: "Pendiente"
+        )
+
+        RowOfStats(
+            label = "Duración",
+            value = anime.durationType.toReadableText()
+        )
+
+        RowOfStats(
+            label = "Estado",
+            value = anime.emissionStatus.toReadableText()
+        )
+
         Spacer(modifier = Modifier.height(12.dp))
     }
 }
 
 @Composable
-private fun RowOfStats(label: String, value: String) {
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+private fun RowOfStats(
+    label: String,
+    value: String
+) {
+    Column(
+        modifier = Modifier.padding(vertical = 4.dp)
+    ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Text(text = value, style = MaterialTheme.typography.bodyLarge)
-    }
-}
 
-@Composable
-private fun TrailersHeader(totalTrailers: Int) {
-    Text(
-        text = "Lista de trailers en YouTube ($totalTrailers)",
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-    )
-}
-
-@Composable
-private fun TrailerRow(
-    trailer: Trailer,
-    onWatch: (String) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Trailer ${trailer.number} · ${trailer.durationMinutes} min",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = trailer.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = trailer.description,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-            OutlinedButton(
-                onClick = { onWatch(trailer.youtubeUrl) },
-                modifier = Modifier.padding(top = 12.dp)
-            ) {
-                Text("Ver en YouTube")
-            }
-        }
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 }
 
 @Composable
 private fun AnimeDetailLoading() {
-    Box(modifier = Modifier.fillMaxSize()) {
-        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.align(Alignment.Center)
+        )
     }
 }
 
@@ -401,11 +469,22 @@ private fun AnimeDetailError(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = message, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge
+        )
+
         Spacer(modifier = Modifier.height(12.dp))
-        Button(onClick = onRetry) { Text("Reintentar") }
-        OutlinedButton(onClick = onBack, modifier = Modifier.padding(top = 8.dp)) {
-            Text("Volver")
+
+        Button(onClick = onRetry) {
+            Text(text = "Reintentar")
+        }
+
+        OutlinedButton(
+            onClick = onBack,
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            Text(text = "Volver")
         }
     }
 }
@@ -419,7 +498,6 @@ private fun AnimeDetailPreview() {
                 detail = FakeDataSource.getAnimeDetail(FakeDataSource.heroAnime.id),
                 isFavorite = true,
                 onBack = {},
-                onPlay = {},
                 onTrivia = {},
                 onFavoriteToggle = {}
             )
