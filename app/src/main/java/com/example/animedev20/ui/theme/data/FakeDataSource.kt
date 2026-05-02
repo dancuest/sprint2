@@ -6,12 +6,10 @@ import com.example.animedev20.ui.theme.domain.model.AnimeSection
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.EmissionStatus
 import com.example.animedev20.ui.theme.domain.model.Genre
-import com.example.animedev20.ui.theme.domain.model.Trailer
 import com.example.animedev20.ui.theme.domain.model.TriviaProfileStats
 import com.example.animedev20.ui.theme.domain.model.UserProfile
 import com.example.animedev20.ui.theme.domain.model.UserSettings
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
-import java.net.URLEncoder
 
 object FakeDataSource {
     val shonen = Genre(id = "1", name = "Shonen")
@@ -30,7 +28,10 @@ object FakeDataSource {
             originalTitle = "Kimetsu no Yaiba",
             synopsis = "Tanjiro se convierte en cazador de demonios para salvar a su hermana y vengar a su familia.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1286/99889.jpg",
-            mangaPlusUrl = buildMangaPlusSearchUrl("Demon Slayer"),
+            mangaPlusUrl = "",
+            mangaUrl = null,
+            mangaTitle = null,
+            trailerUrl = null,
             totalEpisodes = 26,
             durationType = DurationType.MEDIUM,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -44,7 +45,10 @@ object FakeDataSource {
             originalTitle = "Vinland Saga",
             synopsis = "Thorfinn busca venganza en una historia épica sobre exploración y honor vikingo.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1907/117414.jpg",
-            mangaPlusUrl = buildMangaPlusSearchUrl("Vinland Saga"),
+            mangaPlusUrl = "",
+            mangaUrl = null,
+            mangaTitle = null,
+            trailerUrl = null,
             totalEpisodes = 48,
             durationType = DurationType.LONG,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -58,7 +62,10 @@ object FakeDataSource {
             originalTitle = "Made in Abyss",
             synopsis = "Riko y Reg descienden a un abismo lleno de criaturas extrañas y misterios ancestrales.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/6/86733.jpg",
-            mangaPlusUrl = buildMangaPlusSearchUrl("Made in Abyss"),
+            mangaPlusUrl = "",
+            mangaUrl = null,
+            mangaTitle = null,
+            trailerUrl = null,
             totalEpisodes = 13,
             durationType = DurationType.SHORT,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -72,7 +79,10 @@ object FakeDataSource {
             originalTitle = "Jujutsu Kaisen",
             synopsis = "Itadori se enfrenta a maldiciones para proteger a quienes ama mientras aprende artes ocultas.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1171/109222.jpg",
-            mangaPlusUrl = buildMangaPlusSearchUrl("Jujutsu Kaisen"),
+            mangaPlusUrl = "",
+            mangaUrl = null,
+            mangaTitle = null,
+            trailerUrl = null,
             totalEpisodes = 24,
             durationType = DurationType.MEDIUM,
             emissionStatus = EmissionStatus.ON_AIR,
@@ -86,7 +96,10 @@ object FakeDataSource {
             originalTitle = "Monster",
             synopsis = "El doctor Tenma persigue a un asesino en serie en un thriller psicológico lleno de suspense.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/10/18793.jpg",
-            mangaPlusUrl = buildMangaPlusSearchUrl("Monster"),
+            mangaPlusUrl = "",
+            mangaUrl = null,
+            mangaTitle = null,
+            trailerUrl = null,
             totalEpisodes = 74,
             durationType = DurationType.LONG,
             emissionStatus = EmissionStatus.FINISHED,
@@ -100,7 +113,10 @@ object FakeDataSource {
             originalTitle = "Hagane no Renkinjutsushi",
             synopsis = "Los hermanos Elric buscan la piedra filosofal para recuperar lo que perdieron tras un experimento fallido.",
             coverImageUrl = "https://cdn.myanimelist.net/images/anime/1223/96541.jpg",
-            mangaPlusUrl = buildMangaPlusSearchUrl("Fullmetal Alchemist"),
+            mangaPlusUrl = "",
+            mangaUrl = null,
+            mangaTitle = null,
+            trailerUrl = null,
             totalEpisodes = 64,
             durationType = DurationType.LONG,
             emissionStatus = EmissionStatus.FINISHED,
@@ -109,10 +125,6 @@ object FakeDataSource {
         )
     )
 
-    private val trailersByAnime: Map<Long, List<Trailer>> =
-        animeCatalog.associate { anime ->
-            anime.id to buildTrailersFor(anime.title)
-        }
     val heroAnime: Anime = animeCatalog.first()
 
     val preferredGenres: List<Genre> = listOf(shonen, aventura, seinen)
@@ -184,31 +196,7 @@ object FakeDataSource {
                 "Contexto histórico del año ${anime.releaseYear ?: "N/A"}",
                 "Referencias gastronómicas y festividades mostradas en la serie"
             ),
-            trailers = trailersByAnime[animeId].orEmpty()
+            trailers = emptyList()
         )
     }
-
-    private fun buildTrailersFor(title: String): List<Trailer> {
-        val trailerQueries = listOf(
-            "trailer oficial",
-            "trailer temporada 1",
-            "opening trailer",
-            "trailer subtitulado"
-        )
-        return trailerQueries.mapIndexed { index, query ->
-            Trailer(
-                number = index + 1,
-                title = "Trailer ${index + 1} en YouTube",
-                durationMinutes = 2 + index,
-                description = "Búsqueda en YouTube de \"$title $query\" para ver avances oficiales y fanmade.",
-                youtubeUrl = buildYouTubeSearchUrl("$title $query")
-            )
-        }
-    }
-
-    private fun buildYouTubeSearchUrl(query: String): String =
-        "https://www.youtube.com/results?search_query=${URLEncoder.encode(query, "UTF-8")}"
-
-    private fun buildMangaPlusSearchUrl(query: String): String =
-        "https://mangaplus.shueisha.co.jp/titles?search=${URLEncoder.encode(query, "UTF-8")}"
 }
