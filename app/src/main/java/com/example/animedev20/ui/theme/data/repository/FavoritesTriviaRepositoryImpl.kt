@@ -16,6 +16,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlin.math.ceil
 import kotlin.math.max
@@ -215,13 +216,20 @@ class FavoritesTriviaRepositoryImpl(
     ): List<TriviaQuestion> {
         delay(400)
 
-        val anime = latestFavorites.firstOrNull { it.id == animeId }
-            ?: runCatching { animeRepository.getAnimeDetail(animeId).anime }.getOrNull()
+        // Garantiza estado fresco de favoritos
+        runCatching { favoritesRepository.refreshFavorites() }
+
+        val favoriteSnapshot = try {
+            favoritesRepository.favorites.first()
+        } catch (e: Exception) {
+            emptyList<Anime>()
+        }
+
+        val anime = favoriteSnapshot.firstOrNull { it.id == animeId }
             ?: throw IllegalArgumentException("Anime not found in favorites")
 
-        if (latestFavorites.none { it.id == animeId }) {
-            throw IllegalArgumentException("Anime not found in favorites")
-        }
+        // Mantener cache interna sincronizada
+        latestFavorites = favoriteSnapshot
 
         val questions = buildQuestionSet(anime)[difficulty]
             ?: error("No hay preguntas para la dificultad $difficulty")

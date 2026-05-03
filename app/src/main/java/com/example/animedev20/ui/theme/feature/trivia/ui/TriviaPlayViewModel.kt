@@ -83,9 +83,14 @@ class TriviaPlayViewModel(
                     )
                 }
                 .onFailure { throwable ->
-                    _uiState.value = TriviaPlayUiState.Error(
-                        throwable.message ?: "No pudimos preparar la trivia"
-                    )
+                    val raw = throwable.message.orEmpty()
+                    val friendly = if (raw.contains("Anime not found in favorites", ignoreCase = true)) {
+                        "Para jugar esta trivia, primero agrega el anime a Favoritos."
+                    } else {
+                        raw.ifBlank { "No pudimos preparar la trivia" }
+                    }
+
+                    _uiState.value = TriviaPlayUiState.Error(friendly)
                 }
         }
     }

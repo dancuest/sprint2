@@ -16,11 +16,8 @@ class GetHomeContentUseCase(
     private companion object {
         private const val THROTTLE_MS = 500L
         private const val RETRY_DELAY_MS = 1_200L
-        private const val MAX_ATTEMPTS_PER_GENRE = 2
+        private const val MAX_ATTEMPTS_PER_GENRE = 1
         private const val TARGET_SECTION_SIZE = 10
-
-        // ID del género "Action" en Jikan como fallback final del hero y de refuerzo.
-        private const val FALLBACK_GENRE_ID = "1"
     }
 
     suspend operator fun invoke(): Result<HomeContent> = try {
@@ -57,7 +54,8 @@ class GetHomeContentUseCase(
             usedAnimeIds += recommendationList.map { it.id }
             sections += AnimeSection(
                 genre = Genre("recommendations", "Para Ti"),
-                animes = recommendationList
+                animes = recommendationList,
+                source = "adaptive"
             )
         }
 
@@ -96,6 +94,7 @@ class GetHomeContentUseCase(
     ): List<Anime> {
         val uniqueRecommendations = linkedMapOf<Long, Anime>()
 
+        // 1) Prioridad absoluta: resultados adaptativos del backend.
         adaptiveRecommendations
             .asSequence()
             .filterNot { it.id == heroAnime.id }
@@ -109,13 +108,10 @@ class GetHomeContentUseCase(
             return uniqueRecommendations.values.toList()
         }
 
-        val candidateGenreIds = buildList {
-            addAll(preferredGenres.map { it.id })
-            addAll(heroAnime.genres.map { it.id })
-            add(FALLBACK_GENRE_ID)
-        }.distinct()
+        // 2) Relleno controlado SOLO con géneros preferidos del usuario.
+        val preferredGenreIds = preferredGenres.map { it.id }.distinct()
 
-        for (genreId in candidateGenreIds) {
+        for (genreId in preferredGenreIds) {
             val candidates = loadGenreCandidates(genreId)
 
             for (anime in candidates) {
@@ -157,7 +153,7 @@ class GetHomeContentUseCase(
      * Resuelve el anime hero con fallback progresivo:
      * 1. Primer anime de recomendaciones adaptativas (si existe)
      * 2. Primer anime del primer género preferido del usuario
-     * 3. Primer anime del género Action (id=1) como último recurso
+     * 3. Hero general del backend como último recurso
      */
     private suspend fun resolveHeroAnime(preferredGenres: List<Genre>): Anime? {
         if (preferredGenres.isNotEmpty()) {
@@ -171,7 +167,7 @@ class GetHomeContentUseCase(
         }
 
         return runCatching {
-            animeRepository.getAnimesByGenre(FALLBACK_GENRE_ID).firstOrNull()
+            animeRepository.getHeroRecommendation()
         }.getOrNull()
     }
 }
