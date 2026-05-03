@@ -4,10 +4,9 @@ import android.os.Build
 import java.util.Locale
 
 object ApiConfig {
-    private const val ANDROID_EMULATOR_BASE_URL = "http://10.0.2.2:3000"
-    private const val GENYMOTION_BASE_URL = "http://10.0.3.2:3000"
-
-    private const val DEVICE_BASE_URL = "http://192.168.1.17:3000"
+    private const val ANDROID_EMULATOR_BASE_URL = "http://10.0.2.2:3000/"
+    private const val GENYMOTION_BASE_URL = "http://10.0.3.2:3000/"
+    private const val DEVICE_BASE_URL = "https://aviator-dinner-smugly.ngrok-free.dev/"
 
     val baseUrl: String
         get() = when {
