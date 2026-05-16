@@ -17,7 +17,8 @@ data class UserProfile(
     val favoriteGenres: List<Genre>,
     val badges: List<String>,
     val favoriteQuote: String? = null,
-    val coverImageUrl: String = ""
+    val coverImageUrl: String = "",
+    val role: String = USER_ROLE
 )
 
 data class UserSettings(
@@ -38,3 +39,12 @@ data class TriviaProfileStats(
     val masteryLevel: String,
     val scoresByDifficulty: Map<TriviaDifficulty, Int>
 )
+
+const val USER_ROLE = "USER"
+const val MODERATOR_ROLE = "MODERATOR"
+const val ADMIN_ROLE = "ADMIN"
+
+fun UserProfile.canModerateTrivia(): Boolean {
+    return role.equals(ADMIN_ROLE, ignoreCase = true) ||
+            role.equals(MODERATOR_ROLE, ignoreCase = true)
+}

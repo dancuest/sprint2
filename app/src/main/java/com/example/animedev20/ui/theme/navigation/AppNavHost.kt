@@ -20,6 +20,8 @@ import com.example.animedev20.ui.theme.feature.home.ui.HomeScreen
 import com.example.animedev20.ui.theme.feature.onboarding.ui.OnboardingPreferencesRoute
 import com.example.animedev20.ui.theme.feature.profile.ui.ProfileScreen
 import com.example.animedev20.ui.theme.feature.settings.ui.SettingsScreen
+import com.example.animedev20.ui.theme.feature.trivia.ui.AddTriviaQuestionScreen
+import com.example.animedev20.ui.theme.feature.trivia.ui.TriviaModerationScreen
 import com.example.animedev20.ui.theme.feature.trivia.ui.TriviaPlayScreen
 import com.example.animedev20.ui.theme.feature.trivia.ui.TriviaScreen
 
@@ -38,11 +40,17 @@ fun AppNavHost(
         composable(Screen.AuthWelcome.route) {
             AuthWelcomeScreen(
                 appContainer = appContainer,
-                onGoToLogin = { navController.navigate(Screen.Login.route) },
-                onGoToRegister = { navController.navigate(Screen.Register.route) },
+                onGoToLogin = {
+                    navController.navigate(Screen.Login.route)
+                },
+                onGoToRegister = {
+                    navController.navigate(Screen.Register.route)
+                },
                 onAuthSuccessRoute = { targetRoute ->
                     navController.navigate(targetRoute) {
-                        popUpTo(Screen.AuthWelcome.route) { inclusive = true }
+                        popUpTo(Screen.AuthWelcome.route) {
+                            inclusive = true
+                        }
                         launchSingleTop = true
                     }
                 }
@@ -54,13 +62,21 @@ fun AppNavHost(
                 appContainer = appContainer,
                 onAuthSuccessRoute = { targetRoute ->
                     navController.navigate(targetRoute) {
-                        popUpTo(Screen.AuthWelcome.route) { inclusive = true }
+                        popUpTo(Screen.AuthWelcome.route) {
+                            inclusive = true
+                        }
                         launchSingleTop = true
                     }
                 },
-                onGoToRegister = { navController.navigate(Screen.Register.route) },
-                onGoToForgotPassword = { navController.navigate(Screen.ForgotPassword.route) },
-                onGoBack = { navController.popBackStack() }
+                onGoToRegister = {
+                    navController.navigate(Screen.Register.route)
+                },
+                onGoToForgotPassword = {
+                    navController.navigate(Screen.ForgotPassword.route)
+                },
+                onGoBack = {
+                    navController.popBackStack()
+                }
             )
         }
 
@@ -69,21 +85,33 @@ fun AppNavHost(
                 appContainer = appContainer,
                 onAuthSuccessRoute = { targetRoute ->
                     navController.navigate(targetRoute) {
-                        popUpTo(Screen.AuthWelcome.route) { inclusive = true }
+                        popUpTo(Screen.AuthWelcome.route) {
+                            inclusive = true
+                        }
                         launchSingleTop = true
                     }
                 },
-                onGoToLogin = { navController.popBackStack() },
-                onGoBack = { navController.popBackStack() }
+                onGoToLogin = {
+                    navController.popBackStack()
+                },
+                onGoBack = {
+                    navController.popBackStack()
+                }
             )
         }
 
         composable(Screen.ForgotPassword.route) {
             ForgotPasswordScreen(
                 appContainer = appContainer,
-                onGoToReset = { navController.navigate(Screen.ResetPassword.route) },
-                onGoToLogin = { navController.navigate(Screen.Login.route) },
-                onGoBack = { navController.popBackStack() }
+                onGoToReset = {
+                    navController.navigate(Screen.ResetPassword.route)
+                },
+                onGoToLogin = {
+                    navController.navigate(Screen.Login.route)
+                },
+                onGoBack = {
+                    navController.popBackStack()
+                }
             )
         }
 
@@ -92,11 +120,15 @@ fun AppNavHost(
                 appContainer = appContainer,
                 onGoToLogin = {
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.AuthWelcome.route) { inclusive = false }
+                        popUpTo(Screen.AuthWelcome.route) {
+                            inclusive = false
+                        }
                         launchSingleTop = true
                     }
                 },
-                onGoBack = { navController.popBackStack() }
+                onGoBack = {
+                    navController.popBackStack()
+                }
             )
         }
 
@@ -105,7 +137,9 @@ fun AppNavHost(
                 appContainer = appContainer,
                 onContinue = {
                     navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        popUpTo(Screen.Onboarding.route) {
+                            inclusive = true
+                        }
                         launchSingleTop = true
                     }
                 }
@@ -127,8 +161,12 @@ fun AppNavHost(
                 onAnimeSelected = { animeId ->
                     navController.navigate(Screen.AnimeDetail.createRoute(animeId))
                 },
-                onGoToLogin = { navController.navigate(Screen.Login.route) },
-                onGoToRegister = { navController.navigate(Screen.Register.route) }
+                onGoToLogin = {
+                    navController.navigate(Screen.Login.route)
+                },
+                onGoToRegister = {
+                    navController.navigate(Screen.Register.route)
+                }
             )
         }
 
@@ -138,8 +176,18 @@ fun AppNavHost(
                 onPlayTrivia = { animeId ->
                     navController.navigate(Screen.TriviaPlay.createRoute(animeId))
                 },
-                onGoToLogin = { navController.navigate(Screen.Login.route) },
-                onGoToRegister = { navController.navigate(Screen.Register.route) }
+                onAddQuestion = { animeId ->
+                    navController.navigate(Screen.AddTriviaQuestion.createRoute(animeId))
+                },
+                onOpenModeration = {
+                    navController.navigate(Screen.TriviaModeration.route)
+                },
+                onGoToLogin = {
+                    navController.navigate(Screen.Login.route)
+                },
+                onGoToRegister = {
+                    navController.navigate(Screen.Register.route)
+                }
             )
         }
 
@@ -148,7 +196,9 @@ fun AppNavHost(
                 appContainer = appContainer,
                 onLogoutRequest = {
                     navController.navigate(Screen.AuthWelcome.route) {
-                        popUpTo(navController.graph.id) { inclusive = true }
+                        popUpTo(navController.graph.id) {
+                            inclusive = true
+                        }
                         launchSingleTop = true
                     }
                 }
@@ -158,23 +208,32 @@ fun AppNavHost(
         composable(Screen.Profile.route) {
             ProfileScreen(
                 appContainer = appContainer,
-                onGoToLogin = { navController.navigate(Screen.Login.route) },
-                onGoToRegister = { navController.navigate(Screen.Register.route) }
+                onGoToLogin = {
+                    navController.navigate(Screen.Login.route)
+                },
+                onGoToRegister = {
+                    navController.navigate(Screen.Register.route)
+                }
             )
         }
 
         composable(
             route = Screen.AnimeDetail.route,
             arguments = listOf(
-                navArgument("animeId") { type = NavType.LongType }
+                navArgument("animeId") {
+                    type = NavType.LongType
+                }
             )
         ) { backStackEntry ->
-            val animeId = backStackEntry.arguments?.getLong("animeId") ?: return@composable
+            val animeId = backStackEntry.arguments?.getLong("animeId")
+                ?: return@composable
 
             AnimeDetailScreen(
                 animeId = animeId,
                 appContainer = appContainer,
-                onBack = { navController.popBackStack() },
+                onBack = {
+                    navController.popBackStack()
+                },
                 onTriviaRequested = { targetAnimeId ->
                     navController.navigate(Screen.TriviaPlay.createRoute(targetAnimeId))
                 }
@@ -184,15 +243,20 @@ fun AppNavHost(
         composable(
             route = Screen.TriviaPlay.route,
             arguments = listOf(
-                navArgument("animeId") { type = NavType.LongType }
+                navArgument("animeId") {
+                    type = NavType.LongType
+                }
             )
         ) { backStackEntry ->
-            val animeId = backStackEntry.arguments?.getLong("animeId") ?: return@composable
+            val animeId = backStackEntry.arguments?.getLong("animeId")
+                ?: return@composable
 
             TriviaPlayScreen(
                 animeId = animeId,
                 appContainer = appContainer,
-                onBack = { navController.popBackStack() },
+                onBack = {
+                    navController.popBackStack()
+                },
                 onGoToHome = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(navController.graph.findStartDestination().id) {
@@ -217,6 +281,35 @@ fun AppNavHost(
                             restoreState = true
                         }
                     }
+                }
+            )
+        }
+
+        composable(
+            route = Screen.AddTriviaQuestion.route,
+            arguments = listOf(
+                navArgument("animeId") {
+                    type = NavType.LongType
+                }
+            )
+        ) { backStackEntry ->
+            val animeId = backStackEntry.arguments?.getLong("animeId")
+                ?: return@composable
+
+            AddTriviaQuestionScreen(
+                animeId = animeId,
+                appContainer = appContainer,
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Screen.TriviaModeration.route) {
+            TriviaModerationScreen(
+                appContainer = appContainer,
+                onBack = {
+                    navController.popBackStack()
                 }
             )
         }

@@ -1,28 +1,36 @@
 package com.example.animedev20.ui.theme.data
 
 import android.content.Context
+import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.data.remote.AnimeApi
 import com.example.animedev20.ui.theme.data.remote.AnimeApiFactory
 import com.example.animedev20.ui.theme.data.remote.ApiConfig
 import com.example.animedev20.ui.theme.data.remote.AuthApiPlain
 import com.example.animedev20.ui.theme.data.remote.AuthTokenStore
 import com.example.animedev20.ui.theme.data.remote.InteractionsApi
+import com.example.animedev20.ui.theme.data.remote.TriviaApi
 import com.example.animedev20.ui.theme.data.remote.UsersApi
-import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.data.repository.FakeAnimeRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FakeFavoritesRepositoryImpl
+import com.example.animedev20.ui.theme.data.repository.FakeTriviaContributionRepositoryImpl
+import com.example.animedev20.ui.theme.data.repository.FakeTriviaModerationRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FakeUserRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.FavoritesTriviaRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.NoOpInteractionRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.RemoteAnimeRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.RemoteFavoritesRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.RemoteInteractionRepositoryImpl
+import com.example.animedev20.ui.theme.data.repository.RemoteTriviaContributionRepositoryImpl
+import com.example.animedev20.ui.theme.data.repository.RemoteTriviaModerationRepositoryImpl
+import com.example.animedev20.ui.theme.data.repository.RemoteTriviaRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.RemoteUserRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.TrackingFavoritesRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.TrackingTriviaRepositoryImpl
 import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.FavoritesRepository
 import com.example.animedev20.ui.theme.domain.repository.InteractionRepository
+import com.example.animedev20.ui.theme.domain.repository.TriviaContributionRepository
+import com.example.animedev20.ui.theme.domain.repository.TriviaModerationRepository
 import com.example.animedev20.ui.theme.domain.repository.TriviaRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
@@ -35,6 +43,8 @@ interface AppContainer {
     val animeRepository: AnimeRepository
     val favoritesRepository: FavoritesRepository
     val triviaRepository: TriviaRepository
+    val triviaContributionRepository: TriviaContributionRepository
+    val triviaModerationRepository: TriviaModerationRepository
     val userRepository: UserRepository
     val interactionRepository: InteractionRepository
     val homeRefreshBus: HomeRefreshBus
@@ -49,11 +59,19 @@ class DefaultAppContainer(
 
     private val appContext: Context? = context?.applicationContext
     private val tokenStore: AuthTokenStore? = appContext?.let(::AuthTokenStore)
-    private val retrofit = tokenStore?.let { AnimeApiFactory.createRetrofit(baseUrl, it) }
+
+    private val retrofit = tokenStore?.let { store ->
+        AnimeApiFactory.createRetrofit(
+            baseUrl = baseUrl,
+            tokenStore = store
+        )
+    }
+
     private val animeApi = retrofit?.create(AnimeApi::class.java)
     private val authApiPlain = retrofit?.create(AuthApiPlain::class.java)
     override val usersApi = retrofit?.create(UsersApi::class.java)
     private val interactionsApi = retrofit?.create(InteractionsApi::class.java)
+    private val triviaApi = retrofit?.create(TriviaApi::class.java)
 
     private val containerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -85,23 +103,50 @@ class DefaultAppContainer(
             }
         }
 
-    override val favoritesRepository: FavoritesRepository = TrackingFavoritesRepositoryImpl(
-        delegate = localFavoritesRepository,
-        interactionRepository = interactionRepository,
-        homeRefreshBus = homeRefreshBus
-    )
+    override val favoritesRepository: FavoritesRepository =
+        TrackingFavoritesRepositoryImpl(
+            delegate = localFavoritesRepository,
+            interactionRepository = interactionRepository,
+            homeRefreshBus = homeRefreshBus
+        )
 
-    private val localTriviaRepository: TriviaRepository = FavoritesTriviaRepositoryImpl(
-        favoritesRepository = favoritesRepository,
-        animeRepository = animeRepository,
-        context = context
-    )
+    private val fallbackTriviaRepository: TriviaRepository =
+        FavoritesTriviaRepositoryImpl(
+            favoritesRepository = favoritesRepository,
+            animeRepository = animeRepository,
+            context = context
+        )
 
-    override val triviaRepository: TriviaRepository = TrackingTriviaRepositoryImpl(
-        delegate = localTriviaRepository,
-        interactionRepository = interactionRepository,
-        homeRefreshBus = homeRefreshBus
-    )
+    private val remoteAwareTriviaRepository: TriviaRepository =
+        if (useRemote && triviaApi != null) {
+            RemoteTriviaRepositoryImpl(
+                triviaApi = triviaApi,
+                fallbackRepository = fallbackTriviaRepository
+            )
+        } else {
+            fallbackTriviaRepository
+        }
+
+    override val triviaRepository: TriviaRepository =
+        TrackingTriviaRepositoryImpl(
+            delegate = remoteAwareTriviaRepository,
+            interactionRepository = interactionRepository,
+            homeRefreshBus = homeRefreshBus
+        )
+
+    override val triviaContributionRepository: TriviaContributionRepository =
+        if (useRemote && triviaApi != null) {
+            RemoteTriviaContributionRepositoryImpl(triviaApi)
+        } else {
+            FakeTriviaContributionRepositoryImpl
+        }
+
+    override val triviaModerationRepository: TriviaModerationRepository =
+        if (useRemote && triviaApi != null) {
+            RemoteTriviaModerationRepositoryImpl(triviaApi)
+        } else {
+            FakeTriviaModerationRepositoryImpl
+        }
 
     override val userRepository: UserRepository =
         if (

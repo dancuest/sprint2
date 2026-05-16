@@ -42,6 +42,8 @@ import coil.compose.AsyncImage
 import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
+import com.example.animedev20.ui.theme.domain.model.UserProfile
+import com.example.animedev20.ui.theme.domain.model.canModerateTrivia
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaSummary
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
@@ -53,34 +55,59 @@ fun TriviaScreen(
         factory = TriviaViewModel.provideFactory(appContainer.triviaRepository)
     ),
     onPlayTrivia: (Long) -> Unit = {},
+    onAddQuestion: (Long) -> Unit = {},
+    onOpenModeration: () -> Unit = {},
     onGoToLogin: () -> Unit = {},
     onGoToRegister: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isGuestMode by produceState<Boolean?>(initialValue = null) {
+
+    val accessState by produceState<TriviaAccessState>(
+        initialValue = TriviaAccessState.Loading
+    ) {
         value = runCatching {
-            appContainer.userRepository.getUserProfile().email.isBlank()
-        }.getOrDefault(true)
+            appContainer.userRepository.getUserProfile()
+        }.fold(
+            onSuccess = { profile ->
+                if (profile.email.isBlank()) {
+                    TriviaAccessState.Guest
+                } else {
+                    TriviaAccessState.Authenticated(profile)
+                }
+            },
+            onFailure = {
+                TriviaAccessState.Guest
+            }
+        )
     }
 
-    when (isGuestMode) {
-        null -> TriviaLoadingState()
+    when (val currentAccessState = accessState) {
+        TriviaAccessState.Loading -> TriviaLoadingState()
 
-        true -> GuestTriviaBlockedState(
+        TriviaAccessState.Guest -> GuestTriviaBlockedState(
             onGoToLogin = onGoToLogin,
             onGoToRegister = onGoToRegister
         )
 
-        false -> when (val state = uiState) {
-            is TriviaUiState.Loading -> TriviaLoadingState()
-            is TriviaUiState.Error -> TriviaErrorState(
-                message = state.message,
-                onRetry = viewModel::retry
-            )
-            is TriviaUiState.Success -> TriviaListContent(
-                summaries = state.summaries,
-                onPlayTrivia = onPlayTrivia
-            )
+        is TriviaAccessState.Authenticated -> {
+            val showModerationButton = currentAccessState.profile.canModerateTrivia()
+
+            when (val state = uiState) {
+                is TriviaUiState.Loading -> TriviaLoadingState()
+
+                is TriviaUiState.Error -> TriviaErrorState(
+                    message = state.message,
+                    onRetry = viewModel::retry
+                )
+
+                is TriviaUiState.Success -> TriviaListContent(
+                    summaries = state.summaries,
+                    showModerationButton = showModerationButton,
+                    onPlayTrivia = onPlayTrivia,
+                    onAddQuestion = onAddQuestion,
+                    onOpenModeration = onOpenModeration
+                )
+            }
         }
     }
 }
@@ -107,7 +134,7 @@ private fun GuestTriviaBlockedState(
             )
 
             Text(
-                text = "Inicia sesión o regístrate para desbloquear trivias, guardar resultados y medir tu progreso.",
+                text = "Inicia sesión o regístrate para desbloquear trivias, guardar resultados y proponer preguntas para tus series favoritas.",
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -132,11 +159,18 @@ private fun GuestTriviaBlockedState(
 @Composable
 private fun TriviaListContent(
     summaries: List<TriviaSummary>,
+    showModerationButton: Boolean,
     onPlayTrivia: (Long) -> Unit,
+    onAddQuestion: (Long) -> Unit,
+    onOpenModeration: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (summaries.isEmpty()) {
-        TriviaEmptyState(modifier = modifier)
+        TriviaEmptyState(
+            modifier = modifier,
+            showModerationButton = showModerationButton,
+            onOpenModeration = onOpenModeration
+        )
         return
     }
 
@@ -147,7 +181,9 @@ private fun TriviaListContent(
         contentPadding = PaddingValues(vertical = 16.dp)
     ) {
         item {
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
                 Text(
                     text = "Trivias de tus favoritos",
                     style = MaterialTheme.typography.headlineSmall,
@@ -155,10 +191,21 @@ private fun TriviaListContent(
                 )
 
                 Text(
-                    text = "Cada anime favorito desbloquea su propia trivia.",
+                    text = "Juega trivias o contribuye agregando preguntas sobre cada anime.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                if (showModerationButton) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedButton(
+                        onClick = onOpenModeration,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Panel de moderación")
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -166,11 +213,16 @@ private fun TriviaListContent(
 
         items(
             items = summaries,
-            key = { it.anime.id }
+            key = { summary -> summary.anime.id }
         ) { summary ->
             TriviaAnimeCard(
                 summary = summary,
-                onPlayTrivia = { onPlayTrivia(summary.anime.id) }
+                onPlayTrivia = {
+                    onPlayTrivia(summary.anime.id)
+                },
+                onAddQuestion = {
+                    onAddQuestion(summary.anime.id)
+                }
             )
         }
     }
@@ -180,11 +232,19 @@ private fun TriviaListContent(
 private fun TriviaAnimeCard(
     summary: TriviaSummary,
     onPlayTrivia: () -> Unit,
+    onAddQuestion: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val hasBeenPlayed = summary.lastScore != null
-    val buttonLabel = if (hasBeenPlayed) "Volver a jugar" else "Jugar trivia"
+
+    val buttonLabel = if (hasBeenPlayed) {
+        "Volver a jugar"
+    } else {
+        "Jugar trivia"
+    }
+
     val bestScoreLabel = "${summary.bestScore}/${summary.totalQuestions}"
+
     val lastAttemptLabel = summary.lastScore?.let { score ->
         "Último intento: $score/${summary.totalQuestions}"
     } ?: "Aún no has jugado esta trivia"
@@ -200,8 +260,12 @@ private fun TriviaAnimeCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 AsyncImage(
                     model = summary.anime.coverImageUrl,
                     contentDescription = "Poster de ${summary.anime.title}",
@@ -225,7 +289,9 @@ private fun TriviaAnimeCard(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = summary.anime.genres.joinToString { it.name },
+                        text = summary.anime.genres.joinToString { genre ->
+                            genre.name
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
@@ -236,10 +302,14 @@ private fun TriviaAnimeCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 AssistChip(
                     onClick = {},
-                    label = { Text(if (hasBeenPlayed) "Ya jugada" else "Nueva") },
+                    label = {
+                        Text(if (hasBeenPlayed) "Ya jugada" else "Nueva")
+                    },
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer
                     )
@@ -247,7 +317,9 @@ private fun TriviaAnimeCard(
 
                 AssistChip(
                     onClick = {},
-                    label = { Text("Preguntas: ${summary.totalQuestions}") }
+                    label = {
+                        Text("Preguntas: ${summary.totalQuestions}")
+                    }
                 )
             }
 
@@ -280,6 +352,15 @@ private fun TriviaAnimeCard(
             ) {
                 Text(text = buttonLabel)
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onAddQuestion,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Agregar pregunta")
+            }
         }
     }
 }
@@ -306,8 +387,12 @@ private fun TriviaMetricRow(
 
 @Composable
 private fun TriviaLoadingState() {
-    Box(modifier = Modifier.fillMaxSize()) {
-        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.align(Alignment.Center)
+        )
     }
 }
 
@@ -337,7 +422,11 @@ private fun TriviaErrorState(
 }
 
 @Composable
-private fun TriviaEmptyState(modifier: Modifier = Modifier) {
+private fun TriviaEmptyState(
+    modifier: Modifier = Modifier,
+    showModerationButton: Boolean = false,
+    onOpenModeration: () -> Unit = {}
+) {
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -356,13 +445,33 @@ private fun TriviaEmptyState(modifier: Modifier = Modifier) {
             )
 
             Text(
-                text = "Añade animes a favoritos para desbloquear sus trivias y empezar a jugar.",
+                text = "Añade animes a favoritos para desbloquear sus trivias, jugar y proponer preguntas.",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            if (showModerationButton) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = onOpenModeration,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Panel de moderación")
+                }
+            }
         }
     }
+}
+
+private sealed class TriviaAccessState {
+    data object Loading : TriviaAccessState()
+    data object Guest : TriviaAccessState()
+
+    data class Authenticated(
+        val profile: UserProfile
+    ) : TriviaAccessState()
 }
 
 @Preview(showBackground = true)
@@ -378,7 +487,8 @@ private fun TriviaCardPreview() {
                     lastDifficulty = TriviaDifficulty.MEDIUM,
                     bestScore = 3
                 ),
-                onPlayTrivia = {}
+                onPlayTrivia = {},
+                onAddQuestion = {}
             )
         }
     }
@@ -389,7 +499,10 @@ private fun TriviaCardPreview() {
 private fun TriviaEmptyPreview() {
     AnimeDevTheme {
         Surface {
-            TriviaEmptyState()
+            TriviaEmptyState(
+                showModerationButton = true,
+                onOpenModeration = {}
+            )
         }
     }
 }

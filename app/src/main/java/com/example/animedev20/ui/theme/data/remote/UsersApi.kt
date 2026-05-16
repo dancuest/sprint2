@@ -13,6 +13,7 @@ data class UserMeDto(
     val avatarUrl: String? = null,
     val coverImageUrl: String? = null,
     val createdAt: String?,
+    val role: String? = null,
     val completedTrivias: Int? = null,
     val favoriteCount: Int? = null
 )
@@ -43,7 +44,7 @@ data class UserSettingsDto(
     val preferredGenres: List<Int> = emptyList(),
     val preferredGenreDetails: List<GenreDto>? = null,
     val preferredDurations: List<String> = emptyList(),
-    val toggles: Map<String, Any?> = emptyMap(),
+    val toggles: Map<String, Any> = emptyMap(),
     val createdAt: String? = null,
     val updatedAt: String? = null
 )
@@ -54,22 +55,29 @@ data class UpdateSettingsRequest(
     val regionCode: Int? = null,
     val preferredGenres: List<Int>? = null,
     val preferredDurations: List<String>? = null,
-    val toggles: Map<String, Any?>? = null
+    val toggles: Map<String, Any>? = null
 )
 
 interface UsersApi {
+
     @GET("users/me")
     suspend fun me(): UserMeDto
 
     @PUT("users/me/profile")
-    suspend fun updateProfile(@Body req: UpdateProfileRequest): UserMeDto
+    suspend fun updateProfile(
+        @Body req: UpdateProfileRequest
+    ): UserMeDto
 
     @GET("users/me/settings")
     suspend fun getSettings(): UserSettingsDto
 
     @PUT("users/me/settings")
-    suspend fun updateSettings(@Body req: UpdateSettingsRequest): UserSettingsDto
+    suspend fun updateSettings(
+        @Body req: UpdateSettingsRequest
+    ): UserSettingsDto
 
     @PUT("users/me/change-password")
-    suspend fun changePassword(@Body req: ChangePasswordRequest): Map<String, String>
+    suspend fun changePassword(
+        @Body req: ChangePasswordRequest
+    ): Map<String, String>
 }
