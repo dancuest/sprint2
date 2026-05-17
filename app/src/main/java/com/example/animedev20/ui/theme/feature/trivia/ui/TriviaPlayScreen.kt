@@ -4,29 +4,26 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,20 +36,27 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,6 +72,7 @@ import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaQuestion
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 
+@Suppress("UNUSED_PARAMETER")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TriviaPlayScreen(
@@ -75,27 +80,80 @@ fun TriviaPlayScreen(
     onBack: () -> Unit,
     onGoToHome: () -> Unit,
     onGoToTrivia: () -> Unit,
-    appContainer: AppContainer = DefaultAppContainer(),
-    viewModel: TriviaPlayViewModel = viewModel(
+    appContainer: AppContainer? = null
+) {
+    val context = LocalContext.current.applicationContext
+
+    /*
+     * IMPORTANTE:
+     * Esta pantalla fuerza un contenedor con Context real.
+     * No usa el appContainer recibido porque puede venir creado sin Context,
+     * y eso deja el TriviaApi nulo, provocando que la app caiga al repositorio local.
+     */
+    val remoteAppContainer = remember(context) {
+        DefaultAppContainer(context = context)
+    }
+
+    val viewModel: TriviaPlayViewModel = viewModel(
+        key = "trivia-play-remote-$animeId",
         factory = TriviaPlayViewModel.provideFactory(
             animeId = animeId,
-            animeRepository = appContainer.animeRepository,
-            triviaRepository = appContainer.triviaRepository
+            animeRepository = remoteAppContainer.animeRepository,
+            triviaRepository = remoteAppContainer.triviaRepository
         )
     )
-) {
+
+    val reportViewModel: TriviaReportViewModel = viewModel(
+        key = "trivia-report-remote-$animeId",
+        factory = TriviaReportViewModel.provideFactory(
+            triviaAdminRepository = remoteAppContainer.triviaAdminRepository
+        )
+    )
+
     val uiState by viewModel.uiState.collectAsState()
+    val reportUiState: TriviaReportUiState by reportViewModel.uiState.collectAsState()
+
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    var questionToReport by remember { mutableStateOf<TriviaQuestion?>(null) }
+    var reportReason by remember { mutableStateOf("") }
+
+    val currentAnimeTitle = (uiState as? TriviaPlayUiState.Success)
+        ?.state
+        ?.anime
+        ?.title
+
+    LaunchedEffect(reportUiState.message) {
+        val msg = reportUiState.message
+        if (msg != null) {
+            snackbarHostState.showSnackbar(msg)
+            reportViewModel.consumeMessage()
+        }
+    }
+
+    LaunchedEffect(reportUiState.reportSent) {
+        if (reportUiState.reportSent) {
+            questionToReport = null
+            reportReason = ""
+            reportViewModel.consumeReportSent()
+        }
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        },
         topBar = {
             TopAppBar(
-                title = { Text("Trivia") },
+                title = {
+                    Text("Trivia")
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
                         )
                     }
@@ -127,11 +185,39 @@ fun TriviaPlayScreen(
                 onRestart = viewModel::restart,
                 onGoToHome = onGoToHome,
                 onGoToTrivia = onGoToTrivia,
+                onReportQuestion = { question ->
+                    questionToReport = question
+                    reportReason = ""
+                },
                 modifier = Modifier
                     .padding(innerPadding)
                     .fillMaxSize()
             )
         }
+    }
+
+    val currentReportUiState = reportUiState
+
+    questionToReport?.let { selectedQuestion ->
+        TriviaReportDialog(
+            questionText = selectedQuestion.question,
+            reason = reportReason,
+            isSending = currentReportUiState.isSending,
+            onReasonChange = { value ->
+                reportReason = value.take(1000)
+            },
+            onSend = {
+                reportViewModel.reportQuestion(
+                    question = selectedQuestion,
+                    animeTitle = currentAnimeTitle,
+                    reason = reportReason
+                )
+            },
+            onDismiss = {
+                questionToReport = null
+                reportReason = ""
+            }
+        )
     }
 }
 
@@ -144,6 +230,7 @@ private fun TriviaPlayContent(
     onRestart: () -> Unit,
     onGoToHome: () -> Unit,
     onGoToTrivia: () -> Unit,
+    onReportQuestion: (TriviaQuestion) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -176,7 +263,8 @@ private fun TriviaPlayContent(
             else -> TriviaQuestionCard(
                 state = state,
                 onAnswer = onAnswer,
-                onNext = onNext
+                onNext = onNext,
+                onReportQuestion = onReportQuestion
             )
         }
     }
@@ -315,14 +403,16 @@ private fun TriviaInstructions() {
             )
 
             Text(
-                text = "Selecciona una dificultad para empezar: fácil tiene 3 preguntas, media 5 y difícil 8.",
+                text = "Selecciona una dificultad para empezar: fácil tiene 5 preguntas, media 7 y difícil 10. Cada dificultad tiene su propio banco de preguntas.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             AssistChip(
                 onClick = {},
-                label = { Text("Tip: cada intento queda registrado en tu historial") },
+                label = {
+                    Text("Tip: cada intento queda registrado en tu historial")
+                },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.EmojiEvents,
@@ -338,11 +428,15 @@ private fun TriviaInstructions() {
 private fun TriviaQuestionCard(
     state: TriviaPlayState,
     onAnswer: (Int) -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    onReportQuestion: (TriviaQuestion) -> Unit
 ) {
     val question = state.currentQuestion ?: return
-    val progress = if (state.totalQuestions == 0) 0f
-    else (state.currentIndex + 1).toFloat() / state.totalQuestions.toFloat()
+    val progress = if (state.totalQuestions == 0) {
+        0f
+    } else {
+        (state.currentIndex + 1).toFloat() / state.totalQuestions.toFloat()
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -389,12 +483,26 @@ private fun TriviaQuestionCard(
                 )
             }
 
-            Text(
-                text = question.question,
-                style = MaterialTheme.typography.headlineSmall
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = question.question,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
 
-            QuestionFeedbackHint(question = question)
+                TriviaReportButton(
+                    onClick = {
+                        onReportQuestion(question)
+                    }
+                )
+            }
+
+            QuestionFeedbackHint()
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 question.options.forEachIndexed { index, option ->
@@ -424,7 +532,11 @@ private fun TriviaQuestionCard(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            text = if (correct) "¡Respuesta correcta!" else "Respuesta incorrecta",
+                            text = if (correct) {
+                                "¡Respuesta correcta!"
+                            } else {
+                                "Respuesta incorrecta"
+                            },
                             fontWeight = FontWeight.Bold,
                             color = if (correct) {
                                 MaterialTheme.colorScheme.onTertiaryContainer
@@ -460,9 +572,9 @@ private fun TriviaQuestionCard(
 }
 
 @Composable
-private fun QuestionFeedbackHint(question: TriviaQuestion) {
+private fun QuestionFeedbackHint() {
     Text(
-        text = "Analiza bien las opciones antes de responder.",
+        text = "Analiza bien las opciones antes de responder. Si ves un dato incorrecto, repórtalo con el ícono de alerta.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
@@ -709,7 +821,12 @@ private fun TriviaPlayPreview() {
                                 animeId = anime.id,
                                 difficulty = TriviaDifficulty.MEDIUM,
                                 question = "¿Cuál es el título original?",
-                                options = listOf("Kimetsu no Yaiba", "Vinland Saga", "Monster"),
+                                options = listOf(
+                                    "Kimetsu no Yaiba",
+                                    "Vinland Saga",
+                                    "Monster",
+                                    "Naruto"
+                                ),
                                 correctAnswerIndex = 0,
                                 feedback = "Se conoce como Kimetsu no Yaiba"
                             )
@@ -725,7 +842,8 @@ private fun TriviaPlayPreview() {
                 onNext = {},
                 onRestart = {},
                 onGoToHome = {},
-                onGoToTrivia = {}
+                onGoToTrivia = {},
+                onReportQuestion = {}
             )
         }
     }

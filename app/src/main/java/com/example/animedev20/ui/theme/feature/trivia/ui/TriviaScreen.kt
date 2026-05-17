@@ -42,10 +42,10 @@ import coil.compose.AsyncImage
 import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.FakeDataSource
-import com.example.animedev20.ui.theme.domain.model.UserProfile
-import com.example.animedev20.ui.theme.domain.model.canModerateTrivia
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaDifficulty
 import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaSummary
+import com.example.animedev20.ui.theme.domain.model.UserProfile
+import com.example.animedev20.ui.theme.domain.model.canModerateTrivia
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
 
 @Composable
@@ -90,7 +90,7 @@ fun TriviaScreen(
         )
 
         is TriviaAccessState.Authenticated -> {
-            val showModerationButton = currentAccessState.profile.canModerateTrivia()
+            val showAdminButton = currentAccessState.profile.canModerateTrivia()
 
             when (val state = uiState) {
                 is TriviaUiState.Loading -> TriviaLoadingState()
@@ -102,7 +102,7 @@ fun TriviaScreen(
 
                 is TriviaUiState.Success -> TriviaListContent(
                     summaries = state.summaries,
-                    showModerationButton = showModerationButton,
+                    showAdminButton = showAdminButton,
                     onPlayTrivia = onPlayTrivia,
                     onAddQuestion = onAddQuestion,
                     onOpenModeration = onOpenModeration
@@ -159,7 +159,7 @@ private fun GuestTriviaBlockedState(
 @Composable
 private fun TriviaListContent(
     summaries: List<TriviaSummary>,
-    showModerationButton: Boolean,
+    showAdminButton: Boolean,
     onPlayTrivia: (Long) -> Unit,
     onAddQuestion: (Long) -> Unit,
     onOpenModeration: () -> Unit,
@@ -168,7 +168,7 @@ private fun TriviaListContent(
     if (summaries.isEmpty()) {
         TriviaEmptyState(
             modifier = modifier,
-            showModerationButton = showModerationButton,
+            showAdminButton = showAdminButton,
             onOpenModeration = onOpenModeration
         )
         return
@@ -178,37 +178,16 @@ private fun TriviaListContent(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(vertical = 16.dp)
+        contentPadding = PaddingValues(
+            top = 16.dp,
+            bottom = 24.dp
+        )
     ) {
         item {
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                Text(
-                    text = "Trivias de tus favoritos",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Text(
-                    text = "Juega trivias o contribuye agregando preguntas sobre cada anime.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                if (showModerationButton) {
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedButton(
-                        onClick = onOpenModeration,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Panel de moderación")
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
+            TriviaHeader(
+                showAdminButton = showAdminButton,
+                onOpenModeration = onOpenModeration
+            )
         }
 
         items(
@@ -225,6 +204,41 @@ private fun TriviaListContent(
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun TriviaHeader(
+    showAdminButton: Boolean,
+    onOpenModeration: () -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp)
+    ) {
+        Text(
+            text = "Trivias de tus favoritos",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        Text(
+            text = "Juega trivias o contribuye agregando preguntas sobre cada anime.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        if (showAdminButton) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = onOpenModeration,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Administrar trivias")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
     }
 }
 
@@ -250,6 +264,10 @@ private fun TriviaAnimeCard(
     } ?: "Aún no has jugado esta trivia"
 
     val difficultyLabel = summary.lastDifficulty?.displayName ?: "Sin intentos previos"
+
+    val genresLabel = summary.anime.genres
+        .joinToString { genre -> genre.name }
+        .ifBlank { "Sin géneros registrados" }
 
     Card(
         modifier = modifier
@@ -289,9 +307,7 @@ private fun TriviaAnimeCard(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = summary.anime.genres.joinToString { genre ->
-                            genre.name
-                        },
+                        text = genresLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
@@ -424,7 +440,7 @@ private fun TriviaErrorState(
 @Composable
 private fun TriviaEmptyState(
     modifier: Modifier = Modifier,
-    showModerationButton: Boolean = false,
+    showAdminButton: Boolean = false,
     onOpenModeration: () -> Unit = {}
 ) {
     Box(
@@ -451,14 +467,14 @@ private fun TriviaEmptyState(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            if (showModerationButton) {
+            if (showAdminButton) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedButton(
                     onClick = onOpenModeration,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Panel de moderación")
+                    Text("Administrar trivias")
                 }
             }
         }
@@ -500,7 +516,7 @@ private fun TriviaEmptyPreview() {
     AnimeDevTheme {
         Surface {
             TriviaEmptyState(
-                showModerationButton = true,
+                showAdminButton = true,
                 onOpenModeration = {}
             )
         }

@@ -30,31 +30,46 @@ class RemoteTriviaRepositoryImpl(
         val questionLimit = AnimeTriviaQuestionFactory.questionCountForDifficulty(difficulty)
 
         val remoteQuestions = runCatching {
-            triviaApi.getApprovedQuestions(
+            val response = triviaApi.getApprovedQuestions(
                 animeId = animeId,
                 difficulty = difficulty.name,
                 limit = questionLimit
-            ).data
+            )
+
+            response.data
                 .mapNotNull { remoteQuestion -> remoteQuestion.toDomainQuestion() }
                 .filter { question -> question.difficulty == difficulty }
                 .shuffled()
-                .take(questionLimit)
         }.onFailure { error ->
-            Log.w(
+            Log.e(
                 TAG,
-                "No se pudieron cargar preguntas remotas para animeId=$animeId difficulty=$difficulty",
+                "Error cargando preguntas remotas animeId=$animeId difficulty=$difficulty",
                 error
             )
-        }.getOrDefault(emptyList())
-
-        if (remoteQuestions.isNotEmpty()) {
-            return remoteQuestions
+        }.getOrElse { error ->
+            throw IllegalStateException(
+                "No fue posible conectar con el banco de preguntas de AnimeDev. " +
+                        "Verifica internet, backend en Render y que la app esté usando la URL remota.",
+                error
+            )
         }
 
-        return fallbackRepository.getQuestions(
-            animeId = animeId,
-            difficulty = difficulty
-        )
+        if (remoteQuestions.isEmpty()) {
+            throw IllegalStateException(
+                "Este anime aún no tiene preguntas reales aprobadas para ${difficulty.name}. " +
+                        "Carga preguntas desde el panel de administración antes de jugar esta dificultad."
+            )
+        }
+
+        if (remoteQuestions.size < questionLimit) {
+            throw IllegalStateException(
+                "Este anime tiene ${remoteQuestions.size} preguntas reales para ${difficulty.name}, " +
+                        "pero esta dificultad necesita $questionLimit. " +
+                        "Carga las preguntas faltantes para completar la trivia."
+            )
+        }
+
+        return remoteQuestions.take(questionLimit)
     }
 
     override suspend fun recordResult(

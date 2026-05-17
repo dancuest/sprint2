@@ -10,11 +10,9 @@ import com.example.animedev20.ui.theme.domain.model.Trivias.TriviaSummary
 import com.example.animedev20.ui.theme.domain.repository.AnimeRepository
 import com.example.animedev20.ui.theme.domain.repository.FavoritesRepository
 import com.example.animedev20.ui.theme.domain.repository.TriviaRepository
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlin.math.max
 
@@ -26,7 +24,6 @@ class FavoritesTriviaRepositoryImpl(
 ) : TriviaRepository {
 
     private companion object {
-        const val DEFAULT_QUESTION_COUNT = 3
         const val PREFS_NAME = "animedev_trivia_prefs"
         const val KEY_STATS = "trivia_stats"
     }
@@ -34,13 +31,12 @@ class FavoritesTriviaRepositoryImpl(
     private data class TriviaStats(
         val timesPlayed: Int = 0,
         val lastScore: Int? = null,
-        val totalQuestions: Int = DEFAULT_QUESTION_COUNT,
+        val totalQuestions: Int = AnimeTriviaQuestionFactory.questionCountForDifficulty(TriviaDifficulty.EASY),
         val lastDifficulty: TriviaDifficulty? = null,
         val bestScore: Int = 0
     )
 
     private val statsFlow = MutableStateFlow<Map<Int, TriviaStats>>(emptyMap())
-    private var latestFavorites: List<Anime> = emptyList()
 
     init {
         restoreStats()
@@ -48,20 +44,17 @@ class FavoritesTriviaRepositoryImpl(
 
     override fun getTriviaSummaries(): Flow<List<TriviaSummary>> =
         favoritesRepository.favorites.combine(statsFlow) { favorites, stats ->
-            latestFavorites = favorites
-
             favorites
                 .sortedBy { it.title.lowercase() }
                 .map { anime ->
                     val animeStats = stats[anime.id.toInt()]
+                    val difficulty = animeStats?.lastDifficulty ?: TriviaDifficulty.EASY
 
                     TriviaSummary(
                         anime = anime,
                         lastScore = animeStats?.lastScore,
                         totalQuestions = animeStats?.totalQuestions
-                            ?: AnimeTriviaQuestionFactory.questionCountForDifficulty(
-                                animeStats?.lastDifficulty ?: TriviaDifficulty.EASY
-                            ),
+                            ?: AnimeTriviaQuestionFactory.questionCountForDifficulty(difficulty),
                         lastDifficulty = animeStats?.lastDifficulty,
                         bestScore = animeStats?.bestScore ?: 0
                     )
@@ -72,28 +65,11 @@ class FavoritesTriviaRepositoryImpl(
         animeId: Long,
         difficulty: TriviaDifficulty
     ): List<TriviaQuestion> {
-        delay(400)
-
-        runCatching {
-            favoritesRepository.refreshFavorites()
-        }
-
-        val favoriteSnapshot = runCatching {
-            favoritesRepository.favorites.first()
-        }.getOrDefault(emptyList())
-
-        val anime = favoriteSnapshot.firstOrNull { it.id == animeId }
-            ?: throw IllegalArgumentException("Anime not found in favorites")
-
-        latestFavorites = favoriteSnapshot
-
-        val questions = AnimeTriviaQuestionFactory.build(anime, difficulty)
-
-        if (questions.isEmpty()) {
-            error("No hay preguntas seguras disponibles para ${anime.title}")
-        }
-
-        return questions
+        throw IllegalStateException(
+            "La app está intentando usar el repositorio local de trivias. " +
+                    "Eso significa que no se está usando el backend remoto. " +
+                    "Revisa ApiConfig, conexión a internet y recompila la app."
+        )
     }
 
     override suspend fun recordResult(
@@ -140,7 +116,6 @@ class FavoritesTriviaRepositoryImpl(
 
             val timesPlayed = parts[1].toIntOrNull() ?: 0
             val lastScore = parts[2].toIntOrNull()
-            val totalQuestions = parts[3].toIntOrNull() ?: DEFAULT_QUESTION_COUNT
 
             val lastDifficulty = parts[4]
                 .takeIf { it.isNotBlank() }
@@ -149,6 +124,10 @@ class FavoritesTriviaRepositoryImpl(
                         TriviaDifficulty.valueOf(difficultyName)
                     }.getOrNull()
                 }
+
+            val safeDifficulty = lastDifficulty ?: TriviaDifficulty.EASY
+            val totalQuestions = parts[3].toIntOrNull()
+                ?: AnimeTriviaQuestionFactory.questionCountForDifficulty(safeDifficulty)
 
             val bestScore = parts[5].toIntOrNull() ?: 0
 

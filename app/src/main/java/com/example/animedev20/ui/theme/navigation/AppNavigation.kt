@@ -103,6 +103,12 @@ sealed class Screen(
         fun createRoute(animeId: Long) = "trivia/add/$animeId"
     }
 
+    object AdminTrivia : Screen(
+        "trivia/admin",
+        "Administrar trivias",
+        Icons.Outlined.HelpOutline
+    )
+
     object TriviaModeration : Screen(
         "trivia/moderation",
         "Moderación",

@@ -45,6 +45,5 @@ const val MODERATOR_ROLE = "MODERATOR"
 const val ADMIN_ROLE = "ADMIN"
 
 fun UserProfile.canModerateTrivia(): Boolean {
-    return role.equals(ADMIN_ROLE, ignoreCase = true) ||
-            role.equals(MODERATOR_ROLE, ignoreCase = true)
+    return role.equals("ADMIN", ignoreCase = true)
 }

@@ -21,7 +21,7 @@ import com.example.animedev20.ui.theme.feature.onboarding.ui.OnboardingPreferenc
 import com.example.animedev20.ui.theme.feature.profile.ui.ProfileScreen
 import com.example.animedev20.ui.theme.feature.settings.ui.SettingsScreen
 import com.example.animedev20.ui.theme.feature.trivia.ui.AddTriviaQuestionScreen
-import com.example.animedev20.ui.theme.feature.trivia.ui.TriviaModerationScreen
+import com.example.animedev20.ui.theme.feature.trivia.ui.AdminTriviaScreen
 import com.example.animedev20.ui.theme.feature.trivia.ui.TriviaPlayScreen
 import com.example.animedev20.ui.theme.feature.trivia.ui.TriviaScreen
 
@@ -180,7 +180,7 @@ fun AppNavHost(
                     navController.navigate(Screen.AddTriviaQuestion.createRoute(animeId))
                 },
                 onOpenModeration = {
-                    navController.navigate(Screen.TriviaModeration.route)
+                    navController.navigate(Screen.AdminTrivia.route)
                 },
                 onGoToLogin = {
                     navController.navigate(Screen.Login.route)
@@ -305,8 +305,8 @@ fun AppNavHost(
             )
         }
 
-        composable(Screen.TriviaModeration.route) {
-            TriviaModerationScreen(
+        composable(Screen.AdminTrivia.route) {
+            AdminTriviaScreen(
                 appContainer = appContainer,
                 onBack = {
                     navController.popBackStack()
