@@ -23,6 +23,7 @@ import com.example.animedev20.ui.theme.data.repository.RemoteFavoritesRepository
 import com.example.animedev20.ui.theme.data.repository.RemoteInteractionRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.RemoteTriviaContributionRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.RemoteTriviaModerationRepositoryImpl
+import com.example.animedev20.ui.theme.data.repository.RemoteTriviaRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.RemoteUserRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.TrackingFavoritesRepositoryImpl
 import com.example.animedev20.ui.theme.data.repository.TrackingTriviaRepositoryImpl
@@ -131,9 +132,19 @@ class DefaultAppContainer(
             context = context
         )
 
+    private val playableTriviaRepository: TriviaRepository =
+        if (useRemote && triviaApi != null) {
+            RemoteTriviaRepositoryImpl(
+                triviaApi = triviaApi,
+                fallbackRepository = localTriviaRepository
+            )
+        } else {
+            localTriviaRepository
+        }
+
     override val triviaRepository: TriviaRepository =
         TrackingTriviaRepositoryImpl(
-            delegate = localTriviaRepository,
+            delegate = playableTriviaRepository,
             interactionRepository = interactionRepository,
             homeRefreshBus = homeRefreshBus
         )

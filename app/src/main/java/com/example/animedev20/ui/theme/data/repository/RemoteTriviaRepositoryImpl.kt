@@ -27,13 +27,14 @@ class RemoteTriviaRepositoryImpl(
         animeId: Long,
         difficulty: TriviaDifficulty
     ): List<TriviaQuestion> {
-        val questionLimit = AnimeTriviaQuestionFactory.questionCountForDifficulty(difficulty)
+        val playQuestionLimit = AnimeTriviaQuestionFactory.playQuestionCountForDifficulty(difficulty)
+        val bankRequestLimit = AnimeTriviaQuestionFactory.bankTargetQuestionCountForDifficulty(difficulty)
 
         val remoteQuestions = runCatching {
             val response = triviaApi.getApprovedQuestions(
                 animeId = animeId,
                 difficulty = difficulty.name,
-                limit = questionLimit
+                limit = bankRequestLimit
             )
 
             response.data
@@ -61,15 +62,15 @@ class RemoteTriviaRepositoryImpl(
             )
         }
 
-        if (remoteQuestions.size < questionLimit) {
+        if (remoteQuestions.size < playQuestionLimit) {
             throw IllegalStateException(
                 "Este anime tiene ${remoteQuestions.size} preguntas reales para ${difficulty.name}, " +
-                        "pero esta dificultad necesita $questionLimit. " +
-                        "Carga las preguntas faltantes para completar la trivia."
+                        "pero esta dificultad necesita mínimo $playQuestionLimit para jugar. " +
+                        "Carga las preguntas faltantes desde el panel de administración."
             )
         }
 
-        return remoteQuestions.take(questionLimit)
+        return remoteQuestions.take(playQuestionLimit)
     }
 
     override suspend fun recordResult(

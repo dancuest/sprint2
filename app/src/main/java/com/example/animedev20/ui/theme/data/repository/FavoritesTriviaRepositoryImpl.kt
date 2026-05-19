@@ -13,6 +13,7 @@ import com.example.animedev20.ui.theme.domain.repository.TriviaRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlin.math.max
 
@@ -65,11 +66,10 @@ class FavoritesTriviaRepositoryImpl(
         animeId: Long,
         difficulty: TriviaDifficulty
     ): List<TriviaQuestion> {
-        throw IllegalStateException(
-            "La app está intentando usar el repositorio local de trivias. " +
-                    "Eso significa que no se está usando el backend remoto. " +
-                    "Revisa ApiConfig, conexión a internet y recompila la app."
-        )
+        val anime = favoritesRepository.favorites.first().find { it.id == animeId }
+            ?: throw IllegalArgumentException("Anime con ID $animeId no encontrado en favoritos")
+
+        return AnimeTriviaQuestionFactory.build(anime, difficulty)
     }
 
     override suspend fun recordResult(

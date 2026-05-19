@@ -319,9 +319,7 @@ private fun ReportStatusFilters(
     val statuses = listOf(
         "PENDING" to "Pendientes",
         "RESOLVED" to "Resueltas",
-        "DELETED" to "Eliminadas",
-        "REJECTED" to "Rechazadas",
-        "ALL" to "Todas"
+        "DELETED" to "Eliminadas"
     )
 
     Row(

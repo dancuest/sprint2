@@ -95,7 +95,7 @@ class ProfileViewModel(
                 }
 
                 val triviaResolvedCount = profile.completedTrivias
-                val favoriteCount = profile.totalAnimesWatched
+                val favoriteCount = favoriteAnimes.size
 
                 ProfileUiState(
                     isLoading = false,
@@ -117,9 +117,9 @@ class ProfileViewModel(
 
     private fun buildFanLevel(favoriteCount: Int, triviaCount: Int): String {
         return when {
-            favoriteCount >= 20 && triviaCount >= 12 -> "Top Global"
-            favoriteCount >= 15 && triviaCount >= 10 -> "OtakuPro"
-            favoriteCount >= 7 && triviaCount >= 7 -> "Aprendiz"
+            favoriteCount >= 12 && triviaCount >= 15 -> "Top Global"
+            favoriteCount >= 8 && triviaCount >= 10 -> "OtakuPro"
+            favoriteCount >= 5 && triviaCount >= 7 -> "Aprendiz"
             else -> "Novato"
         }
     }

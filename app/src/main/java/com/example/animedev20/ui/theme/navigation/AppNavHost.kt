@@ -260,10 +260,9 @@ fun AppNavHost(
                 onGoToHome = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
+                            inclusive = false
                         }
                         launchSingleTop = true
-                        restoreState = true
                     }
                 },
                 onGoToTrivia = {
@@ -275,11 +274,21 @@ fun AppNavHost(
                     if (!returnedToTrivia) {
                         navController.navigate(Screen.Trivia.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                                inclusive = false
                             }
                             launchSingleTop = true
-                            restoreState = true
                         }
+                    }
+                },
+                onAddQuestion = {
+                    navController.navigate(Screen.AddTriviaQuestion.createRoute(animeId))
+                },
+                onGoToAnimeInfo = {
+                    navController.navigate(Screen.AnimeDetail.createRoute(animeId)) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            inclusive = false
+                        }
+                        launchSingleTop = true
                     }
                 }
             )

@@ -379,7 +379,7 @@ private fun FanLevelInfoDialog(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Se mantiene mientras no alcances al menos 7 animes en favoritos y 7 trivias jugadas.",
+                        text = "Nivel base. Referencia: 3 animes en favoritos y 5 trivias jugadas.",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -389,7 +389,7 @@ private fun FanLevelInfoDialog(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Se alcanza con 7 animes en favoritos y 7 trivias jugadas.",
+                        text = "Se alcanza con 5 animes en favoritos y 7 trivias jugadas.",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -399,7 +399,7 @@ private fun FanLevelInfoDialog(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Se alcanza con 15 animes en favoritos y 10 trivias jugadas.",
+                        text = "Se alcanza con 8 animes en favoritos y 10 trivias jugadas.",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -409,7 +409,7 @@ private fun FanLevelInfoDialog(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Se alcanza con 20 animes en favoritos y 12 trivias jugadas.",
+                        text = "Se alcanza con 12 animes en favoritos y 15 trivias jugadas.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }

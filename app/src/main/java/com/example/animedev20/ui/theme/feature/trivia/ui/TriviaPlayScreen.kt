@@ -80,6 +80,8 @@ fun TriviaPlayScreen(
     onBack: () -> Unit,
     onGoToHome: () -> Unit,
     onGoToTrivia: () -> Unit,
+    onAddQuestion: () -> Unit,
+    onGoToAnimeInfo: () -> Unit,
     appContainer: AppContainer? = null
 ) {
     val context = LocalContext.current.applicationContext
@@ -169,13 +171,26 @@ fun TriviaPlayScreen(
                     .fillMaxSize()
             )
 
-            is TriviaPlayUiState.Error -> TriviaPlayError(
-                message = state.message,
-                onRetry = viewModel::tryAgain,
-                modifier = Modifier
+            is TriviaPlayUiState.Error -> {
+                val errorModifier = Modifier
                     .padding(innerPadding)
                     .fillMaxSize()
-            )
+
+                if (state.message.isQuestionBankError()) {
+                    TriviaQuestionBankError(
+                        message = state.message,
+                        onAddQuestion = onAddQuestion,
+                        onGoToAnimeInfo = onGoToAnimeInfo,
+                        modifier = errorModifier
+                    )
+                } else {
+                    TriviaPlayError(
+                        message = state.message,
+                        onRetry = viewModel::tryAgain,
+                        modifier = errorModifier
+                    )
+                }
+            }
 
             is TriviaPlayUiState.Success -> TriviaPlayContent(
                 state = state.state,
@@ -318,7 +333,7 @@ private fun AnimeTriviaHeader(anime: Anime) {
                     overflow = TextOverflow.Ellipsis
                 )
 
-                anime.synopsis?.takeIf { it.isNotBlank() }?.let { synopsis ->
+                anime.synopsis.takeIf { it.isNotBlank() }?.let { synopsis ->
                     Text(
                         text = synopsis,
                         style = MaterialTheme.typography.bodySmall,
@@ -403,7 +418,7 @@ private fun TriviaInstructions() {
             )
 
             Text(
-                text = "Selecciona una dificultad para empezar: fácil tiene 5 preguntas, media 7 y difícil 10. Cada dificultad tiene su propio banco de preguntas.",
+                text = "Selecciona una dificultad para empezar: fácil tiene 3 preguntas, media 5 y difícil 8. Cada dificultad usa su propio banco de preguntas.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -766,6 +781,56 @@ private fun buildResultMessage(score: Int, totalQuestions: Int): String {
 private fun TriviaPlayLoading(modifier: Modifier = Modifier) {
     BoxWithCenteredContent(modifier) {
         CircularProgressIndicator()
+    }
+}
+
+@Composable
+
+private fun String.isQuestionBankError(): Boolean {
+    val normalized = lowercase()
+
+    return normalized.contains("preguntas reales") ||
+            normalized.contains("preguntas faltantes") ||
+            normalized.contains("aún no tiene preguntas") ||
+            normalized.contains("aun no tiene preguntas") ||
+            normalized.contains("necesita preguntas")
+}
+
+@Composable
+private fun TriviaQuestionBankError(
+    message: String,
+    onAddQuestion: () -> Unit,
+    onGoToAnimeInfo: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BoxWithCenteredContent(modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = message,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            Button(
+                onClick = onAddQuestion,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Enviar pregunta para agregar")
+            }
+
+            OutlinedButton(
+                onClick = onGoToAnimeInfo,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Volver a la info del anime")
+            }
+        }
     }
 }
 
