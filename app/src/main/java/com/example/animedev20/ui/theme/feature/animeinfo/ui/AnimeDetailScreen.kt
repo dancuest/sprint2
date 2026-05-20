@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -48,6 +47,7 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -94,6 +94,15 @@ fun AnimeDetailScreen(
 
     val uiState by viewModel.uiState.collectAsState()
 
+    val isGuest by produceState(
+        initialValue = true,
+        key1 = appContainer
+    ) {
+        value = runCatching {
+            appContainer.userRepository.getUserProfile().email.isBlank()
+        }.getOrDefault(true)
+    }
+
     when (val state = uiState) {
         AnimeDetailUiState.Loading -> AnimeDevFullScreenLoading(
             message = "Cargando información del anime..."
@@ -108,6 +117,7 @@ fun AnimeDetailScreen(
         is AnimeDetailUiState.Success -> AnimeDetailContent(
             detail = state.detail,
             isFavorite = state.isFavorite,
+            isGuest = isGuest,
             onBack = onBack,
             onTrivia = {
                 onTriviaRequested(state.detail.anime.id)
@@ -122,6 +132,7 @@ fun AnimeDetailScreen(
 private fun AnimeDetailContent(
     detail: AnimeDetail,
     isFavorite: Boolean,
+    isGuest: Boolean,
     onBack: () -> Unit,
     onTrivia: () -> Unit,
     onFavoriteToggle: () -> Unit
@@ -158,32 +169,34 @@ private fun AnimeDetailContent(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onFavoriteToggle,
-                icon = {
-                    Icon(
-                        imageVector = if (isFavorite) {
-                            Icons.Filled.Favorite
-                        } else {
-                            Icons.Filled.FavoriteBorder
-                        },
-                        contentDescription = if (isFavorite) {
-                            "Quitar de favoritos"
-                        } else {
-                            "Agregar a favoritos"
-                        }
-                    )
-                },
-                text = {
-                    Text(
-                        text = if (isFavorite) {
-                            "En favoritos"
-                        } else {
-                            "Agregar a favoritos"
-                        }
-                    )
-                }
-            )
+            if (!isGuest) {
+                ExtendedFloatingActionButton(
+                    onClick = onFavoriteToggle,
+                    icon = {
+                        Icon(
+                            imageVector = if (isFavorite) {
+                                Icons.Filled.Favorite
+                            } else {
+                                Icons.Filled.FavoriteBorder
+                            },
+                            contentDescription = if (isFavorite) {
+                                "Quitar de favoritos"
+                            } else {
+                                "Agregar a favoritos"
+                            }
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = if (isFavorite) {
+                                "En favoritos"
+                            } else {
+                                "Agregar a favoritos"
+                            }
+                        )
+                    }
+                )
+            }
         }
     ) { innerPadding ->
         LazyColumn(
@@ -191,7 +204,13 @@ private fun AnimeDetailContent(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .navigationBarsPadding(),
-            contentPadding = PaddingValues(bottom = 96.dp),
+            contentPadding = PaddingValues(
+                bottom = if (isGuest) {
+                    32.dp
+                } else {
+                    96.dp
+                }
+            ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -696,6 +715,7 @@ private fun AnimeDetailPreview() {
             AnimeDetailContent(
                 detail = FakeDataSource.getAnimeDetail(FakeDataSource.heroAnime.id),
                 isFavorite = true,
+                isGuest = false,
                 onBack = {},
                 onTrivia = {},
                 onFavoriteToggle = {}
