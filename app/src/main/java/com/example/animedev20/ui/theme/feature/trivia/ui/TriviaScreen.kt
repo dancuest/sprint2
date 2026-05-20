@@ -145,8 +145,8 @@ private fun GuestTriviaBlockedState(
         contentAlignment = Alignment.Center
     ) {
         AnimeDevEmptyState(
-            title = "Trivias disponibles para cuentas",
-            message = "Inicia sesión o crea una cuenta para jugar trivias, guardar resultados y subir tu nivel otaku.",
+            title = "Crea tu cuenta para organizar tus trivias",
+            message = "Como invitado puedes jugar desde la información de cada anime y enviar preguntas. Regístrate para guardar resultados, desbloquear esta sección y seguir tu progreso.",
             primaryActionLabel = AnimeDevCopy.Actions.login,
             onPrimaryAction = onGoToLogin,
             secondaryActionLabel = AnimeDevCopy.Actions.goToRegister,

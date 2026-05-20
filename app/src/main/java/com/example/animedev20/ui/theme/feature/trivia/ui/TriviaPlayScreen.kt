@@ -106,7 +106,8 @@ fun TriviaPlayScreen(
         factory = TriviaPlayViewModel.provideFactory(
             animeId = animeId,
             animeRepository = remoteAppContainer.animeRepository,
-            triviaRepository = remoteAppContainer.triviaRepository
+            triviaRepository = remoteAppContainer.triviaRepository,
+            userRepository = remoteAppContainer.userRepository
         )
     )
 

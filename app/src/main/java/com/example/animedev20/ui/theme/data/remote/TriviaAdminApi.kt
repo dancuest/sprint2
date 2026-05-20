@@ -51,6 +51,7 @@ data class AdminTriviaQuestionResponse(
     val id: String,
     val animeId: Long?,
     val externalAnimeId: String?,
+    val animeTitle: String? = null,
     val question: String,
     val options: List<String>,
     val correctAnswerIndex: Int,

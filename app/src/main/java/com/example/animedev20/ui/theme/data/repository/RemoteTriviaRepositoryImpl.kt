@@ -38,8 +38,12 @@ class RemoteTriviaRepositoryImpl(
             )
 
             response.data
-                .mapNotNull { remoteQuestion -> remoteQuestion.toDomainQuestion() }
-                .filter { question -> question.difficulty == difficulty }
+                .mapNotNull { remoteQuestion ->
+                    remoteQuestion.toDomainQuestion()
+                }
+                .filter { question ->
+                    question.difficulty == difficulty
+                }
                 .shuffled()
         }.onFailure { error ->
             Log.e(
@@ -57,16 +61,8 @@ class RemoteTriviaRepositoryImpl(
 
         if (remoteQuestions.isEmpty()) {
             throw IllegalStateException(
-                "Este anime aún no tiene preguntas reales aprobadas para ${difficulty.name}. " +
-                        "Carga preguntas desde el panel de administración antes de jugar esta dificultad."
-            )
-        }
-
-        if (remoteQuestions.size < playQuestionLimit) {
-            throw IllegalStateException(
-                "Este anime tiene ${remoteQuestions.size} preguntas reales para ${difficulty.name}, " +
-                        "pero esta dificultad necesita mínimo $playQuestionLimit para jugar. " +
-                        "Carga las preguntas faltantes desde el panel de administración."
+                "Este anime aún no tiene preguntas aprobadas para ${difficulty.displayName}. " +
+                        "Puedes enviar una pregunta para ayudar a completar su banco."
             )
         }
 
