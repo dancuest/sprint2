@@ -33,11 +33,20 @@ class GetHomeContentUseCase(
             emptyList()
         }.distinctBy { it.id }
 
-        val heroAnime = adaptiveRecommendations.firstOrNull()
+        val heroCandidate = adaptiveRecommendations.firstOrNull()
             ?: resolveHeroAnime(preferredGenres)
             ?: return Result.failure(
                 Exception("No se pudo cargar el contenido principal. Verifica tu conexión.")
             )
+
+        /**
+         * El hero del Home debe mostrarse siempre con sinopsis en español.
+         *
+         * El candidato puede venir desde recomendaciones adaptativas o desde género,
+         * endpoints que pueden traer datos resumidos. Por eso se hidrata con /detail,
+         * que en backend devuelve la sinopsis traducida.
+         */
+        val heroAnime = hydrateHeroAnime(heroCandidate)
 
         val recommendationList = resolveRecommendationList(
             heroAnime = heroAnime,
@@ -151,9 +160,8 @@ class GetHomeContentUseCase(
 
     /**
      * Resuelve el anime hero con fallback progresivo:
-     * 1. Primer anime de recomendaciones adaptativas (si existe)
-     * 2. Primer anime del primer género preferido del usuario
-     * 3. Hero general del backend como último recurso
+     * 1. Primer anime del primer género preferido del usuario
+     * 2. Hero general del backend como último recurso
      */
     private suspend fun resolveHeroAnime(preferredGenres: List<Genre>): Anime? {
         if (preferredGenres.isNotEmpty()) {
@@ -169,5 +177,13 @@ class GetHomeContentUseCase(
         return runCatching {
             animeRepository.getHeroRecommendation()
         }.getOrNull()
+    }
+
+    private suspend fun hydrateHeroAnime(anime: Anime): Anime {
+        return runCatching {
+            animeRepository.getAnimeDetail(anime.id).anime
+        }.getOrElse {
+            anime
+        }
     }
 }
