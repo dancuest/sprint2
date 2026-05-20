@@ -7,15 +7,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,7 +34,6 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,9 +47,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -69,6 +70,11 @@ import com.example.animedev20.ui.theme.domain.model.Anime
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.UserProfile
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
+import com.example.animedev20.ui.theme.ux.AnimeDevCopy
+import com.example.animedev20.ui.theme.ux.AnimeDevEmptyState
+import com.example.animedev20.ui.theme.ux.AnimeDevErrorState
+import com.example.animedev20.ui.theme.ux.AnimeDevFullScreenLoading
+import com.example.animedev20.ui.theme.ux.AnimeDevInfoCard
 
 @Composable
 fun ProfileScreen(
@@ -100,25 +106,18 @@ fun ProfileScreen(
             triviaPlayedCount = uiState.triviaPlayedCount
         )
 
-        uiState.isLoading -> ProfileLoadingState()
+        uiState.isLoading -> AnimeDevFullScreenLoading(
+            message = "Cargando tu perfil..."
+        )
 
         uiState.errorMessage != null -> ProfileErrorState(
             message = uiState.errorMessage,
             onRetry = viewModel::refresh
         )
 
-        else -> ProfileEmptyState(onRetry = viewModel::refresh)
-    }
-}
-
-@Composable
-private fun ProfileLoadingState() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        else -> ProfileEmptyState(
+            onRetry = viewModel::refresh
+        )
     }
 }
 
@@ -127,51 +126,37 @@ private fun ProfileErrorState(
     message: String?,
     onRetry: () -> Unit
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = message ?: "Ocurrió un error al cargar tu perfil",
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onBackground
+        AnimeDevErrorState(
+            title = "No pudimos cargar tu perfil",
+            message = message ?: "Ocurrió un problema al cargar la información de tu cuenta.",
+            primaryActionLabel = AnimeDevCopy.Actions.tryAgain,
+            onPrimaryAction = onRetry
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = onRetry) {
-            Icon(imageVector = Icons.Filled.Refresh, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "Reintentar")
-        }
     }
 }
 
 @Composable
-private fun ProfileEmptyState(onRetry: () -> Unit) {
-    Column(
+private fun ProfileEmptyState(
+    onRetry: () -> Unit
+) {
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "Todavía no hay información suficiente para mostrar tu perfil.",
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onBackground
+        AnimeDevEmptyState(
+            title = "Perfil sin información",
+            message = "Todavía no tenemos datos suficientes para mostrar tu perfil. Intenta volver a cargar.",
+            primaryActionLabel = "Volver a cargar",
+            onPrimaryAction = onRetry
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedButton(onClick = onRetry) {
-            Text(text = "Volver a cargar")
-        }
     }
 }
 
@@ -183,43 +168,18 @@ private fun GuestProfileBlockedState(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp)
+            .navigationBarsPadding()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Column(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = "Perfil bloqueado para invitados",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Text(
-                text = "Para configurar tu foto, portada y datos del perfil, primero inicia sesión o crea una cuenta.",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Button(
-                onClick = onGoToLogin,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Iniciar sesión")
-            }
-
-            OutlinedButton(
-                onClick = onGoToRegister,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Registrarme")
-            }
-        }
+        AnimeDevEmptyState(
+            title = "Perfil disponible para cuentas",
+            message = "Inicia sesión o crea una cuenta para guardar tu foto, portada, favoritos, géneros y progreso otaku.",
+            primaryActionLabel = AnimeDevCopy.Actions.login,
+            onPrimaryAction = onGoToLogin,
+            secondaryActionLabel = AnimeDevCopy.Actions.goToRegister,
+            onSecondaryAction = onGoToRegister
+        )
     }
 }
 
@@ -231,31 +191,46 @@ private fun ProfileContent(
     fanLevel: String,
     triviaPlayedCount: Int
 ) {
-    var showFanLevelInfo by rememberSaveable { mutableStateOf(false) }
+    var showFanLevelInfo by rememberSaveable {
+        mutableStateOf(false)
+    }
 
     if (showFanLevelInfo) {
         FanLevelInfoDialog(
-            onDismiss = { showFanLevelInfo = false }
+            onDismiss = {
+                showFanLevelInfo = false
+            }
         )
     }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(bottom = 32.dp)
+            .background(MaterialTheme.colorScheme.background)
+            .navigationBarsPadding(),
+        contentPadding = PaddingValues(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         item {
-            ProfileHeader(
-                profile = profile
-            )
+            ProfileHeader(profile = profile)
         }
 
         item {
             ProfileStatsRow(
                 fanLevel = fanLevel,
+                favoriteCount = favoriteAnimes.size,
                 triviaPlayedCount = triviaPlayedCount,
-                onFanLevelInfoClick = { showFanLevelInfo = true }
+                onFanLevelInfoClick = {
+                    showFanLevelInfo = true
+                }
+            )
+        }
+
+        item {
+            ProfileProgressInfo(
+                fanLevel = fanLevel,
+                favoriteCount = favoriteAnimes.size,
+                triviaPlayedCount = triviaPlayedCount
             )
         }
 
@@ -263,7 +238,9 @@ private fun ProfileContent(
             SectionTitle(title = "Géneros que me gustan")
 
             if (profile.favoriteGenres.isEmpty()) {
-                EmptySectionMessage(message = "Aún no has configurado géneros favoritos.")
+                EmptySectionMessage(
+                    message = "Aún no has configurado géneros favoritos."
+                )
             } else {
                 FlowRow(
                     modifier = Modifier
@@ -275,7 +252,9 @@ private fun ProfileContent(
                     profile.favoriteGenres.forEach { genre ->
                         AssistChip(
                             onClick = {},
-                            label = { Text(genre.name) },
+                            label = {
+                                Text(genre.name)
+                            },
                             colors = AssistChipDefaults.assistChipColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                 labelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -287,10 +266,12 @@ private fun ProfileContent(
         }
 
         item {
-            SectionTitle(title = "Me gustan las historias:")
+            SectionTitle(title = "Formato de historias preferido")
 
             if (profile.preferredDurations.isEmpty()) {
-                EmptySectionMessage(message = "Aún no has configurado una preferencia de duración.")
+                EmptySectionMessage(
+                    message = "Aún no has configurado una preferencia de duración."
+                )
             } else {
                 FlowRow(
                     modifier = Modifier
@@ -302,7 +283,9 @@ private fun ProfileContent(
                     profile.preferredDurations.forEach { duration ->
                         AssistChip(
                             onClick = {},
-                            label = { Text(durationPreferenceLabel(duration)) }
+                            label = {
+                                Text(durationPreferenceLabel(duration))
+                            }
                         )
                     }
                 }
@@ -313,19 +296,44 @@ private fun ProfileContent(
             SectionTitle(title = "Animes favoritos")
 
             if (favoriteAnimes.isEmpty()) {
-                EmptySectionMessage(message = "Todavía no tienes animes en favoritos.")
+                EmptySectionMessage(
+                    message = "Todavía no tienes animes en favoritos."
+                )
             } else {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(favoriteAnimes, key = { it.id }) { anime ->
+                    items(
+                        items = favoriteAnimes,
+                        key = { it.id }
+                    ) { anime ->
                         FavoriteAnimeCard(anime = anime)
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun ProfileProgressInfo(
+    fanLevel: String,
+    favoriteCount: Int,
+    triviaPlayedCount: Int
+) {
+    val nextGoal = when (fanLevel) {
+        "Top Global" -> "Ya alcanzaste el nivel más alto. Sigue jugando para mantener tu perfil activo."
+        "OtakuPro" -> "Siguiente meta: 12 favoritos y 15 trivias jugadas para llegar a Top Global."
+        "Aprendiz" -> "Siguiente meta: 8 favoritos y 10 trivias jugadas para llegar a OtakuPro."
+        else -> "Siguiente meta: 5 favoritos y 7 trivias jugadas para llegar a Aprendiz."
+    }
+
+    AnimeDevInfoCard(
+        title = "Progreso del perfil",
+        message = "Tienes $favoriteCount animes favoritos y $triviaPlayedCount trivias jugadas. $nextGoal",
+        modifier = Modifier.padding(horizontal = 16.dp)
+    )
 }
 
 @Composable
@@ -373,44 +381,24 @@ private fun FanLevelInfoDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Text(
-                        text = "Novato",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Nivel base. Referencia: 3 animes en favoritos y 5 trivias jugadas.",
-                        style = MaterialTheme.typography.bodyMedium
+                    FanLevelRule(
+                        title = "Novato",
+                        description = "Nivel base. Referencia: 3 animes en favoritos y 5 trivias jugadas."
                     )
 
-                    Text(
-                        text = "Aprendiz",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Se alcanza con 5 animes en favoritos y 7 trivias jugadas.",
-                        style = MaterialTheme.typography.bodyMedium
+                    FanLevelRule(
+                        title = "Aprendiz",
+                        description = "Se alcanza con 5 animes en favoritos y 7 trivias jugadas."
                     )
 
-                    Text(
-                        text = "OtakuPro",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Se alcanza con 8 animes en favoritos y 10 trivias jugadas.",
-                        style = MaterialTheme.typography.bodyMedium
+                    FanLevelRule(
+                        title = "OtakuPro",
+                        description = "Se alcanza con 8 animes en favoritos y 10 trivias jugadas."
                     )
 
-                    Text(
-                        text = "Top Global",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Se alcanza con 12 animes en favoritos y 15 trivias jugadas.",
-                        style = MaterialTheme.typography.bodyMedium
+                    FanLevelRule(
+                        title = "Top Global",
+                        description = "Se alcanza con 12 animes en favoritos y 15 trivias jugadas."
                     )
                 }
             }
@@ -419,13 +407,39 @@ private fun FanLevelInfoDialog(
 }
 
 @Composable
+private fun FanLevelRule(
+    title: String,
+    description: String
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@Composable
 private fun ProfileHeader(
     profile: UserProfile
 ) {
     val displayName = profile.name.ifBlank {
-        profile.nickname.ifBlank { "Invitado" }
+        profile.nickname.ifBlank {
+            "Usuario AnimeDev"
+        }
     }
-    val nickname = profile.nickname.ifBlank { "animefan" }
+
+    val nickname = profile.nickname.ifBlank {
+        "animefan"
+    }
 
     Box(
         modifier = Modifier
@@ -447,14 +461,14 @@ private fun ProfileHeader(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.14f))
+                    .background(Color.Black.copy(alpha = 0.16f))
             )
         }
 
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 20.dp),
+                .padding(horizontal = 20.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             AvatarImage(
@@ -466,13 +480,20 @@ private fun ProfileHeader(
 
             Text(
                 text = displayName,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
             )
 
             Text(
                 text = "@$nickname",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -549,6 +570,7 @@ private fun AvatarImage(
 
             else -> Text(
                 text = fallbackText,
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -559,6 +581,7 @@ private fun AvatarImage(
 @Composable
 private fun ProfileStatsRow(
     fanLevel: String,
+    favoriteCount: Int,
     triviaPlayedCount: Int,
     onFanLevelInfoClick: () -> Unit
 ) {
@@ -578,7 +601,14 @@ private fun ProfileStatsRow(
 
         Box(modifier = Modifier.weight(1f)) {
             ProfileStatCard(
-                title = "Trivias resueltas",
+                title = "Favoritos",
+                value = favoriteCount.toString()
+            )
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
+            ProfileStatCard(
+                title = "Trivias",
                 value = triviaPlayedCount.toString()
             )
         }
@@ -597,49 +627,60 @@ private fun ProfileStatCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                if (onInfoClick != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
 
-                Text(
-                    text = value,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = "Información del nivel de fan",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(15.dp)
+                            .clickable {
+                                onInfoClick()
+                            }
+                    )
+                }
             }
 
-            if (onInfoClick != null) {
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = "Información del nivel de fan",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(18.dp)
-                        .clickable { onInfoClick() }
-                )
-            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
 
 @Composable
-private fun FavoriteAnimeCard(anime: Anime) {
+private fun FavoriteAnimeCard(
+    anime: Anime
+) {
     Card(
         modifier = Modifier.width(180.dp),
         colors = CardDefaults.cardColors(
@@ -649,27 +690,35 @@ private fun FavoriteAnimeCard(anime: Anime) {
         Column {
             AsyncImage(
                 model = anime.coverImageUrl,
-                contentDescription = anime.title,
+                contentDescription = "Portada de ${anime.title}",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(220.dp)
             )
 
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
                     text = anime.title,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
-
                 Text(
-                    text = anime.genres.take(2).joinToString(" • ") { it.name },
+                    text = anime.genres
+                        .take(2)
+                        .joinToString(" • ") { it.name }
+                        .ifBlank { "Sin géneros" },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -677,7 +726,9 @@ private fun FavoriteAnimeCard(anime: Anime) {
 }
 
 @Composable
-private fun SectionTitle(title: String) {
+private fun SectionTitle(
+    title: String
+) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
@@ -688,7 +739,9 @@ private fun SectionTitle(title: String) {
 }
 
 @Composable
-private fun EmptySectionMessage(message: String) {
+private fun EmptySectionMessage(
+    message: String
+) {
     Text(
         text = message,
         style = MaterialTheme.typography.bodyMedium,
@@ -697,7 +750,9 @@ private fun EmptySectionMessage(message: String) {
     )
 }
 
-private fun durationPreferenceLabel(duration: DurationType): String {
+private fun durationPreferenceLabel(
+    duration: DurationType
+): String {
     return when (duration) {
         DurationType.SHORT -> "Cortas"
         DurationType.MEDIUM -> "Medias"
@@ -705,12 +760,23 @@ private fun durationPreferenceLabel(duration: DurationType): String {
     }
 }
 
-private fun decodeImageBitmapFromDataUrl(dataUrl: String): ImageBitmap? {
-    if (!dataUrl.startsWith("data:image")) return null
+private fun decodeImageBitmapFromDataUrl(
+    dataUrl: String
+): ImageBitmap? {
+    if (!dataUrl.startsWith("data:image")) {
+        return null
+    }
 
     return runCatching {
-        val encoded = dataUrl.substringAfter("base64,", missingDelimiterValue = "")
-        if (encoded.isBlank()) return null
+        val encoded = dataUrl.substringAfter(
+            delimiter = "base64,",
+            missingDelimiterValue = ""
+        )
+
+        if (encoded.isBlank()) {
+            return null
+        }
+
         val bytes = Base64.decode(encoded, Base64.DEFAULT)
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
     }.getOrNull()

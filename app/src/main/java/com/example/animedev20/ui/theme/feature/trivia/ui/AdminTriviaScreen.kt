@@ -4,9 +4,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +22,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -51,6 +56,7 @@ import com.example.animedev20.ui.theme.data.DefaultAppContainer
 import com.example.animedev20.ui.theme.data.remote.AdminAnimeSearchResponse
 import com.example.animedev20.ui.theme.data.remote.AdminTriviaQuestionResponse
 import com.example.animedev20.ui.theme.data.remote.TriviaQuestionReportResponse
+import com.example.animedev20.ui.theme.ux.AnimeDevCopy
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +76,8 @@ fun AdminTriviaScreen(
         mutableStateOf<AdminTriviaQuestionResponse?>(null)
     }
 
+    val isBusy = uiState.isLoading || uiState.isActionLoading
+
     LaunchedEffect(uiState.message) {
         uiState.message?.let { message ->
             snackbarHostState.showSnackbar(message)
@@ -81,13 +89,16 @@ fun AdminTriviaScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Administrar trivias")
+                    Text("Panel de trivias")
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        enabled = !isBusy
+                    ) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Volver"
+                            contentDescription = AnimeDevCopy.Actions.goBack
                         )
                     }
                 }
@@ -101,13 +112,15 @@ fun AdminTriviaScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .navigationBarsPadding()
+                .fillMaxSize()
         ) {
-            if (uiState.isLoading || uiState.isActionLoading) {
+            if (isBusy) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
             AdminTriviaSectionSelector(
                 selectedSection = uiState.selectedSection,
+                enabled = !isBusy,
                 onSectionSelected = viewModel::selectSection,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
@@ -115,6 +128,7 @@ fun AdminTriviaScreen(
             when (uiState.selectedSection) {
                 AdminTriviaSection.REQUESTS -> QuestionRequestsSection(
                     requests = uiState.questionRequests,
+                    isBusy = isBusy,
                     onApprove = viewModel::approveQuestionRequest,
                     onReject = viewModel::rejectQuestionRequest,
                     onRefresh = viewModel::loadQuestionRequests
@@ -123,6 +137,7 @@ fun AdminTriviaScreen(
                 AdminTriviaSection.REPORTS -> QuestionReportsSection(
                     selectedStatus = uiState.reportStatusFilter,
                     reports = uiState.questionReports,
+                    isBusy = isBusy,
                     onStatusSelected = viewModel::setReportStatusFilter,
                     onDelete = viewModel::deleteReport,
                     onResolved = viewModel::openResolveReportEditor,
@@ -135,6 +150,7 @@ fun AdminTriviaScreen(
                     animeResults = uiState.animeResults,
                     selectedAnime = uiState.selectedAnime,
                     questions = uiState.animeQuestions,
+                    isBusy = isBusy,
                     onQueryChange = viewModel::updateAnimeQuery,
                     onAnimeSelected = viewModel::selectAnime,
                     onCreateQuestion = viewModel::openCreateQuestionEditor,
@@ -167,36 +183,15 @@ fun AdminTriviaScreen(
     }
 
     questionPendingDelete?.let { question ->
-        AlertDialog(
-            onDismissRequest = {
+        DeleteQuestionDialog(
+            question = question,
+            isDeleting = uiState.isActionLoading,
+            onConfirm = {
+                viewModel.deleteQuestion(question.id)
                 questionPendingDelete = null
             },
-            title = {
-                Text("Borrar pregunta")
-            },
-            text = {
-                Text(
-                    text = "¿Seguro que deseas borrar esta pregunta?\n\n${question.question}"
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.deleteQuestion(question.id)
-                        questionPendingDelete = null
-                    }
-                ) {
-                    Text("Borrar")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        questionPendingDelete = null
-                    }
-                ) {
-                    Text("Cancelar")
-                }
+            onDismiss = {
+                questionPendingDelete = null
             }
         )
     }
@@ -206,6 +201,7 @@ fun AdminTriviaScreen(
 @Composable
 private fun AdminTriviaSectionSelector(
     selectedSection: AdminTriviaSection,
+    enabled: Boolean,
     onSectionSelected: (AdminTriviaSection) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -216,7 +212,10 @@ private fun AdminTriviaSectionSelector(
         AdminTriviaSection.entries.forEach { section ->
             FilterChip(
                 selected = selectedSection == section,
-                onClick = { onSectionSelected(section) },
+                onClick = {
+                    onSectionSelected(section)
+                },
+                enabled = enabled,
                 label = {
                     Text(section.label)
                 }
@@ -228,6 +227,7 @@ private fun AdminTriviaSectionSelector(
 @Composable
 private fun QuestionRequestsSection(
     requests: List<AdminTriviaQuestionResponse>,
+    isBusy: Boolean,
     onApprove: (String) -> Unit,
     onReject: (String) -> Unit,
     onRefresh: () -> Unit
@@ -239,14 +239,18 @@ private fun QuestionRequestsSection(
         item {
             SectionHeader(
                 title = "Solicitudes de preguntas",
-                subtitle = "Aquí aparecen las preguntas enviadas por usuarios pendientes de aprobación.",
+                subtitle = "Revisa las preguntas propuestas por usuarios antes de agregarlas al banco oficial.",
+                isBusy = isBusy,
                 onRefresh = onRefresh
             )
         }
 
         if (requests.isEmpty()) {
             item {
-                EmptyAdminState("No hay solicitudes pendientes.")
+                EmptyAdminState(
+                    title = "No hay solicitudes pendientes",
+                    message = "Cuando un usuario envíe una pregunta, aparecerá aquí para aprobarla o rechazarla."
+                )
             }
         } else {
             items(
@@ -255,6 +259,7 @@ private fun QuestionRequestsSection(
             ) { question ->
                 AdminQuestionRequestCard(
                     question = question,
+                    isBusy = isBusy,
                     onApprove = { onApprove(question.id) },
                     onReject = { onReject(question.id) }
                 )
@@ -267,6 +272,7 @@ private fun QuestionRequestsSection(
 private fun QuestionReportsSection(
     selectedStatus: String,
     reports: List<TriviaQuestionReportResponse>,
+    isBusy: Boolean,
     onStatusSelected: (String) -> Unit,
     onDelete: (String) -> Unit,
     onResolved: (TriviaQuestionReportResponse) -> Unit,
@@ -280,19 +286,24 @@ private fun QuestionReportsSection(
         item {
             SectionHeader(
                 title = "Quejas de preguntas",
-                subtitle = "Reportes enviados desde el botón de error dentro de las trivias.",
+                subtitle = "Gestiona reportes enviados desde las trivias. Puedes resolver, rechazar o mover una queja a eliminadas.",
+                isBusy = isBusy,
                 onRefresh = onRefresh
             )
 
             ReportStatusFilters(
                 selectedStatus = selectedStatus,
+                enabled = !isBusy,
                 onStatusSelected = onStatusSelected
             )
         }
 
         if (reports.isEmpty()) {
             item {
-                EmptyAdminState("No hay quejas con este estado.")
+                EmptyAdminState(
+                    title = "No hay quejas en este estado",
+                    message = "Cambia el filtro o actualiza la sección para revisar otros reportes."
+                )
             }
         } else {
             items(
@@ -301,6 +312,7 @@ private fun QuestionReportsSection(
             ) { report ->
                 QuestionReportCard(
                     report = report,
+                    isBusy = isBusy,
                     onDelete = { onDelete(report.id) },
                     onResolved = { onResolved(report) },
                     onRejected = { onRejected(report.id) }
@@ -314,6 +326,7 @@ private fun QuestionReportsSection(
 @Composable
 private fun ReportStatusFilters(
     selectedStatus: String,
+    enabled: Boolean,
     onStatusSelected: (String) -> Unit
 ) {
     val statuses = listOf(
@@ -331,7 +344,10 @@ private fun ReportStatusFilters(
         statuses.forEach { (value, label) ->
             FilterChip(
                 selected = selectedStatus == value,
-                onClick = { onStatusSelected(value) },
+                onClick = {
+                    onStatusSelected(value)
+                },
+                enabled = enabled,
                 label = {
                     Text(label)
                 }
@@ -346,6 +362,7 @@ private fun QuestionBankSection(
     animeResults: List<AdminAnimeSearchResponse>,
     selectedAnime: AdminAnimeSearchResponse?,
     questions: List<AdminTriviaQuestionResponse>,
+    isBusy: Boolean,
     onQueryChange: (String) -> Unit,
     onAnimeSelected: (AdminAnimeSearchResponse) -> Unit,
     onCreateQuestion: () -> Unit,
@@ -360,7 +377,8 @@ private fun QuestionBankSection(
         item {
             SectionHeader(
                 title = "Banco de preguntas por anime",
-                subtitle = "Busca un anime, revisa sus preguntas, edítalas o elimínalas.",
+                subtitle = "Busca un anime para crear, editar o eliminar preguntas del banco oficial.",
+                isBusy = isBusy,
                 onRefresh = onRefresh
             )
 
@@ -368,11 +386,15 @@ private fun QuestionBankSection(
                 value = animeQuery,
                 onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth(),
+                enabled = !isBusy,
                 label = {
                     Text("Buscar anime")
                 },
                 placeholder = {
                     Text("Ejemplo: Naruto, One Piece, Spy x Family")
+                },
+                supportingText = {
+                    Text("Escribe mínimo 2 caracteres para buscar.")
                 },
                 singleLine = true
             )
@@ -385,6 +407,7 @@ private fun QuestionBankSection(
             ) { anime ->
                 AnimeSearchResultCard(
                     anime = anime,
+                    enabled = !isBusy,
                     onClick = { onAnimeSelected(anime) }
                 )
             }
@@ -392,35 +415,12 @@ private fun QuestionBankSection(
 
         selectedAnime?.let { anime ->
             item {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = anime.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-
-                        Text(
-                            text = "Preguntas cargadas: ${questions.size}",
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-
-                        Button(
-                            onClick = onCreateQuestion,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Crear pregunta para este anime")
-                        }
-                    }
-                }
+                SelectedAnimeCard(
+                    anime = anime,
+                    questionsCount = questions.size,
+                    isBusy = isBusy,
+                    onCreateQuestion = onCreateQuestion
+                )
             }
 
             item {
@@ -430,7 +430,10 @@ private fun QuestionBankSection(
 
         if (selectedAnime != null && questions.isEmpty()) {
             item {
-                EmptyAdminState("Este anime aún no tiene preguntas registradas.")
+                EmptyAdminState(
+                    title = "Este anime no tiene preguntas",
+                    message = "Puedes crear la primera pregunta desde el botón superior."
+                )
             }
         }
 
@@ -440,9 +443,49 @@ private fun QuestionBankSection(
         ) { question ->
             AdminBankQuestionCard(
                 question = question,
+                isBusy = isBusy,
                 onEdit = { onEditQuestion(question) },
                 onDelete = { onDeleteQuestion(question) }
             )
+        }
+    }
+}
+
+@Composable
+private fun SelectedAnimeCard(
+    anime: AdminAnimeSearchResponse,
+    questionsCount: Int,
+    isBusy: Boolean,
+    onCreateQuestion: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = anime.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+
+            Text(
+                text = "Preguntas cargadas: $questionsCount",
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+
+            Button(
+                onClick = onCreateQuestion,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isBusy
+            ) {
+                Text("Crear pregunta para este anime")
+            }
         }
     }
 }
@@ -476,17 +519,17 @@ private fun DifficultyCountersCard(
             )
 
             Text(
-                text = "EASY: $easy / 5 ${if (easy >= 5) "✅" else "⚠️"}",
+                text = "Fácil: $easy / 5 ${if (easy >= 5) "✅" else "⚠️"}",
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
 
             Text(
-                text = "MEDIUM: $medium / 7 ${if (medium >= 7) "✅" else "⚠️"}",
+                text = "Media: $medium / 7 ${if (medium >= 7) "✅" else "⚠️"}",
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
 
             Text(
-                text = "HARD: $hard / 10 ${if (hard >= 10) "✅" else "⚠️"}",
+                text = "Difícil: $hard / 10 ${if (hard >= 10) "✅" else "⚠️"}",
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
 
@@ -510,6 +553,7 @@ private fun DifficultyCountersCard(
 private fun SectionHeader(
     title: String,
     subtitle: String,
+    isBusy: Boolean,
     onRefresh: () -> Unit
 ) {
     Column(
@@ -529,7 +573,8 @@ private fun SectionHeader(
 
         OutlinedButton(
             onClick = onRefresh,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isBusy
         ) {
             Text("Actualizar")
         }
@@ -539,6 +584,7 @@ private fun SectionHeader(
 @Composable
 private fun AdminQuestionRequestCard(
     question: AdminTriviaQuestionResponse,
+    isBusy: Boolean,
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
@@ -548,14 +594,16 @@ private fun AdminQuestionRequestCard(
         ) {
             Button(
                 onClick = onApprove,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                enabled = !isBusy
             ) {
                 Text("Aprobar")
             }
 
             OutlinedButton(
                 onClick = onReject,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                enabled = !isBusy
             ) {
                 Text("Rechazar")
             }
@@ -566,6 +614,7 @@ private fun AdminQuestionRequestCard(
 @Composable
 private fun AdminBankQuestionCard(
     question: AdminTriviaQuestionResponse,
+    isBusy: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -575,14 +624,16 @@ private fun AdminBankQuestionCard(
         ) {
             Button(
                 onClick = onEdit,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                enabled = !isBusy
             ) {
                 Text("Editar")
             }
 
             OutlinedButton(
                 onClick = onDelete,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                enabled = !isBusy
             ) {
                 Text("Borrar")
             }
@@ -636,9 +687,9 @@ private fun AdminQuestionBaseCard(
                 )
             }
 
-            question.explanation?.takeIf { it.isNotBlank() }?.let {
+            question.explanation?.takeIf { it.isNotBlank() }?.let { explanation ->
                 Text(
-                    text = "Explicación: $it",
+                    text = "Explicación: $explanation",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -654,6 +705,7 @@ private fun AdminQuestionBaseCard(
 @Composable
 private fun QuestionReportCard(
     report: TriviaQuestionReportResponse,
+    isBusy: Boolean,
     onDelete: () -> Unit,
     onResolved: () -> Unit,
     onRejected: () -> Unit
@@ -714,9 +766,9 @@ private fun QuestionReportCard(
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            report.createdAt?.let {
+            report.createdAt?.let { createdAt ->
                 Text(
-                    text = "Fecha: $it",
+                    text = "Fecha: $createdAt",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -730,14 +782,16 @@ private fun QuestionReportCard(
                 ) {
                     OutlinedButton(
                         onClick = onDelete,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        enabled = !isBusy
                     ) {
-                        Text("Eliminar")
+                        Text("Enviar a eliminadas")
                     }
 
                     Button(
                         onClick = onResolved,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        enabled = !isBusy
                     ) {
                         Text("Resolver")
                     }
@@ -745,7 +799,8 @@ private fun QuestionReportCard(
 
                 OutlinedButton(
                     onClick = onRejected,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isBusy
                 ) {
                     Text("Rechazar queja")
                 }
@@ -763,10 +818,15 @@ private fun QuestionReportCard(
 @Composable
 private fun AnimeSearchResultCard(
     anime: AdminAnimeSearchResponse,
+    enabled: Boolean,
     onClick: () -> Unit
 ) {
     Card(
-        onClick = onClick,
+        onClick = {
+            if (enabled) {
+                onClick()
+            }
+        },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
@@ -781,9 +841,9 @@ private fun AnimeSearchResultCard(
                 fontWeight = FontWeight.Bold
             )
 
-            anime.originalTitle?.takeIf { it.isNotBlank() }?.let {
+            anime.originalTitle?.takeIf { it.isNotBlank() }?.let { originalTitle ->
                 Text(
-                    text = it,
+                    text = originalTitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -815,7 +875,9 @@ private fun AdminQuestionEditorDialog(
 ) {
     AlertDialog(
         onDismissRequest = {
-            if (!isSaving) onDismiss()
+            if (!isSaving) {
+                onDismiss()
+            }
         },
         title = {
             Text(
@@ -852,8 +914,12 @@ private fun AdminQuestionEditorDialog(
                     value = form.question,
                     onValueChange = onQuestionChange,
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSaving,
                     label = {
                         Text("Pregunta")
+                    },
+                    placeholder = {
+                        Text("Ejemplo: ¿Qué personaje toma esta decisión clave?")
                     },
                     minLines = 2
                 )
@@ -867,8 +933,11 @@ private fun AdminQuestionEditorDialog(
                 form.options.forEachIndexed { index, option ->
                     OutlinedTextField(
                         value = option,
-                        onValueChange = { value -> onOptionChange(index, value) },
+                        onValueChange = { value ->
+                            onOptionChange(index, value)
+                        },
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSaving,
                         label = {
                             Text("Opción ${'A' + index}")
                         },
@@ -886,7 +955,10 @@ private fun AdminQuestionEditorDialog(
                     repeat(4) { index ->
                         FilterChip(
                             selected = form.correctAnswerIndex == index,
-                            onClick = { onCorrectAnswerChange(index) },
+                            onClick = {
+                                onCorrectAnswerChange(index)
+                            },
+                            enabled = !isSaving,
                             label = {
                                 Text(('A' + index).toString())
                             }
@@ -904,7 +976,10 @@ private fun AdminQuestionEditorDialog(
                     listOf("EASY", "MEDIUM", "HARD").forEach { difficulty ->
                         FilterChip(
                             selected = form.difficulty == difficulty,
-                            onClick = { onDifficultyChange(difficulty) },
+                            onClick = {
+                                onDifficultyChange(difficulty)
+                            },
+                            enabled = !isSaving,
                             label = {
                                 Text(difficulty)
                             }
@@ -916,8 +991,12 @@ private fun AdminQuestionEditorDialog(
                     value = form.category,
                     onValueChange = onCategoryChange,
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSaving,
                     label = {
                         Text("Categoría")
+                    },
+                    placeholder = {
+                        Text("Ejemplo: CHARACTER, STORY, GENERAL")
                     },
                     singleLine = true
                 )
@@ -926,8 +1005,12 @@ private fun AdminQuestionEditorDialog(
                     value = form.explanation,
                     onValueChange = onExplanationChange,
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSaving,
                     label = {
                         Text("Explicación")
+                    },
+                    placeholder = {
+                        Text("Explica por qué esa opción es correcta.")
                     },
                     minLines = 3
                 )
@@ -942,7 +1025,10 @@ private fun AdminQuestionEditorDialog(
                     listOf("APPROVED", "PENDING", "REJECTED").forEach { status ->
                         FilterChip(
                             selected = form.status == status,
-                            onClick = { onStatusChange(status) },
+                            onClick = {
+                                onStatusChange(status)
+                            },
+                            enabled = !isSaving,
                             label = {
                                 Text(status)
                             }
@@ -956,6 +1042,15 @@ private fun AdminQuestionEditorDialog(
                 onClick = onSave,
                 enabled = !isSaving
             ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp
+                    )
+
+                    Spacer(modifier = Modifier.size(8.dp))
+                }
+
                 Text(
                     text = if (form.resolveReportId != null) {
                         "Guardar y resolver"
@@ -970,7 +1065,47 @@ private fun AdminQuestionEditorDialog(
                 onClick = onDismiss,
                 enabled = !isSaving
             ) {
-                Text("Cancelar")
+                Text(AnimeDevCopy.Actions.cancel)
+            }
+        }
+    )
+}
+
+@Composable
+private fun DeleteQuestionDialog(
+    question: AdminTriviaQuestionResponse,
+    isDeleting: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = {
+            if (!isDeleting) {
+                onDismiss()
+            }
+        },
+        title = {
+            Text("Borrar pregunta")
+        },
+        text = {
+            Text(
+                text = "Esta acción eliminará la pregunta del banco.\n\n${question.question}"
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = !isDeleting
+            ) {
+                Text("Borrar")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isDeleting
+            ) {
+                Text(AnimeDevCopy.Actions.cancel)
             }
         }
     )
@@ -978,6 +1113,7 @@ private fun AdminQuestionEditorDialog(
 
 @Composable
 private fun EmptyAdminState(
+    title: String,
     message: String
 ) {
     Surface(
@@ -985,11 +1121,21 @@ private fun EmptyAdminState(
         tonalElevation = 1.dp,
         shape = MaterialTheme.shapes.large
     ) {
-        Text(
-            text = message,
+        Column(
             modifier = Modifier.padding(18.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

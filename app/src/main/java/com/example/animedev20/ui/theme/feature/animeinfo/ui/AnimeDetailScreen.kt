@@ -12,21 +12,27 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Quiz
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -46,9 +52,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -62,6 +71,10 @@ import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.EmissionStatus
 import com.example.animedev20.ui.theme.domain.model.Genre
 import com.example.animedev20.ui.theme.theme.AnimeDevTheme
+import com.example.animedev20.ui.theme.ux.AnimeDevCopy
+import com.example.animedev20.ui.theme.ux.AnimeDevErrorState
+import com.example.animedev20.ui.theme.ux.AnimeDevFullScreenLoading
+import com.example.animedev20.ui.theme.ux.AnimeDevInfoCard
 
 @Composable
 fun AnimeDetailScreen(
@@ -82,7 +95,9 @@ fun AnimeDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     when (val state = uiState) {
-        AnimeDetailUiState.Loading -> AnimeDetailLoading()
+        AnimeDetailUiState.Loading -> AnimeDevFullScreenLoading(
+            message = "Cargando información del anime..."
+        )
 
         is AnimeDetailUiState.Error -> AnimeDetailError(
             message = state.message,
@@ -94,7 +109,9 @@ fun AnimeDetailScreen(
             detail = state.detail,
             isFavorite = state.isFavorite,
             onBack = onBack,
-            onTrivia = { onTriviaRequested(state.detail.anime.id) },
+            onTrivia = {
+                onTriviaRequested(state.detail.anime.id)
+            },
             onFavoriteToggle = viewModel::toggleFavorite
         )
     }
@@ -115,17 +132,25 @@ private fun AnimeDetailContent(
 
     val uriHandler = LocalUriHandler.current
 
+    val mangaUrl = detail.anime.mangaUrl
+        ?: detail.anime.mangaPlusUrl.takeIf { it.isNotBlank() }
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
                 title = {
-                    Text(text = detail.anime.title)
+                    Text(
+                        text = detail.anime.title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Volver"
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = AnimeDevCopy.Actions.goBack
                         )
                     }
                 },
@@ -136,21 +161,17 @@ private fun AnimeDetailContent(
             ExtendedFloatingActionButton(
                 onClick = onFavoriteToggle,
                 icon = {
-                    val icon = if (isFavorite) {
-                        Icons.Default.Favorite
-                    } else {
-                        Icons.Default.FavoriteBorder
-                    }
-
-                    val contentDescription = if (isFavorite) {
-                        "Eliminar de favoritos"
-                    } else {
-                        "Agregar a favoritos"
-                    }
-
                     Icon(
-                        imageVector = icon,
-                        contentDescription = contentDescription
+                        imageVector = if (isFavorite) {
+                            Icons.Filled.Favorite
+                        } else {
+                            Icons.Filled.FavoriteBorder
+                        },
+                        contentDescription = if (isFavorite) {
+                            "Quitar de favoritos"
+                        } else {
+                            "Agregar a favoritos"
+                        }
                     )
                 },
                 text = {
@@ -168,22 +189,31 @@ private fun AnimeDetailContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(bottom = 48.dp)
+                .padding(innerPadding)
+                .navigationBarsPadding(),
+            contentPadding = PaddingValues(bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
                 AnimeHeroSection(anime = detail.anime)
             }
 
             item {
-                ActionButtons(
+                AnimePrimaryActions(
                     trailerUrl = detail.anime.trailerUrl,
-                    onTrailer = { url -> uriHandler.openUri(url) },
-                    onTrivia = onTrivia,
-                    mangaUrl = detail.anime.mangaUrl
-                        ?: detail.anime.mangaPlusUrl.takeIf { it.isNotBlank() },
-                    onManga = { url -> uriHandler.openUri(url) }
+                    mangaUrl = mangaUrl,
+                    onTrailer = { url ->
+                        uriHandler.openUri(url)
+                    },
+                    onManga = { url ->
+                        uriHandler.openUri(url)
+                    },
+                    onTrivia = onTrivia
                 )
+            }
+
+            item {
+                AnimeQuickInfo(anime = detail.anime)
             }
 
             item {
@@ -191,25 +221,28 @@ private fun AnimeDetailContent(
             }
 
             item {
-                AnimeSynopsis(
+                AnimeSynopsisSection(
                     synopsis = detail.anime.synopsis,
                     culturalNotes = detail.culturalNotes
                 )
             }
 
             item {
-                AnimeStats(anime = detail.anime)
+                AnimeStatsSection(anime = detail.anime)
             }
         }
     }
 }
 
 @Composable
-private fun AnimeHeroSection(anime: Anime) {
+private fun AnimeHeroSection(
+    anime: Anime,
+    modifier: Modifier = Modifier
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(280.dp)
+            .height(320.dp)
     ) {
         AsyncImage(
             model = anime.coverImageUrl,
@@ -224,8 +257,8 @@ private fun AnimeHeroSection(anime: Anime) {
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.7f)
+                            Color.Black.copy(alpha = 0.05f),
+                            Color.Black.copy(alpha = 0.78f)
                         )
                     )
                 )
@@ -234,158 +267,248 @@ private fun AnimeHeroSection(anime: Anime) {
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(20.dp)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            Surface(
+                color = Color.White.copy(alpha = 0.16f),
+                shape = MaterialTheme.shapes.large
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clearAndSetSemantics { }
+                    )
+
+                    Text(
+                        text = anime.emissionStatus.toReadableText(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
             Text(
                 text = anime.title,
                 style = MaterialTheme.typography.headlineSmall,
-                color = Color.White
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
 
+            anime.originalTitle
+                ?.takeIf { it.isNotBlank() && !it.equals(anime.title, ignoreCase = true) }
+                ?.let { originalTitle ->
+                    Text(
+                        text = originalTitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.86f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
             Text(
-                text = "${anime.releaseYear ?: "Próximamente"}  •  ${anime.emissionStatus.toReadableText()}",
+                text = "${anime.releaseYear ?: "Año pendiente"} • ${anime.durationType.toReadableText()}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.85f)
+                color = Color.White.copy(alpha = 0.82f)
             )
         }
     }
 }
 
 @Composable
-private fun ActionButtons(
+private fun AnimePrimaryActions(
     trailerUrl: String?,
-    onTrailer: (String) -> Unit,
-    onTrivia: () -> Unit,
     mangaUrl: String?,
-    onManga: (String) -> Unit
+    onTrailer: (String) -> Unit,
+    onManga: (String) -> Unit,
+    onTrivia: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier.padding(
-            horizontal = 16.dp,
-            vertical = 24.dp
-        )
+        modifier = modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        Button(
+            onClick = onTrivia,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Quiz,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(18.dp)
+                    .clearAndSetSemantics { }
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text("Jugar trivia")
+        }
+
         if (!trailerUrl.isNullOrBlank()) {
-            Button(
-                onClick = { onTrailer(trailerUrl) },
+            OutlinedButton(
+                onClick = {
+                    onTrailer(trailerUrl)
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clearAndSetSemantics { }
                 )
 
-                Spacer(modifier = Modifier.size(8.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-                Text(text = "Ver trailer oficial")
+                Text("Ver trailer oficial")
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        OutlinedButton(
-            onClick = onTrivia,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.HelpOutline,
-                contentDescription = null
-            )
-
-            Spacer(modifier = Modifier.size(8.dp))
-
-            Text(text = "Jugar trivia")
         }
 
         if (!mangaUrl.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(12.dp))
-
             OutlinedButton(
-                onClick = { onManga(mangaUrl) },
+                onClick = {
+                    onManga(mangaUrl)
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    imageVector = Icons.Default.MenuBook,
-                    contentDescription = null
+                    imageVector = Icons.Filled.MenuBook,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clearAndSetSemantics { }
                 )
 
-                Spacer(modifier = Modifier.size(8.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-                Text(text = "Ver manga relacionado")
+                Text("Ver manga relacionado")
             }
+        }
+    }
+}
+
+@Composable
+private fun AnimeQuickInfo(
+    anime: Anime,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        AnimeInfoMetric(
+            label = "Año",
+            value = anime.releaseYear?.toString() ?: "Pendiente",
+            modifier = Modifier.weight(1f)
+        )
+
+        AnimeInfoMetric(
+            label = "Episodios",
+            value = anime.totalEpisodes?.toString() ?: "Pendiente",
+            modifier = Modifier.weight(1f)
+        )
+
+        AnimeInfoMetric(
+            label = "Duración",
+            value = anime.durationType.toShortReadableText(),
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun AnimeInfoMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun GenreSection(genres: List<Genre>) {
+private fun GenreSection(
+    genres: List<Genre>,
+    modifier: Modifier = Modifier
+) {
     if (genres.isEmpty()) {
+        AnimeDevInfoCard(
+            title = "Géneros pendientes",
+            message = "Este anime aún no tiene géneros registrados.",
+            modifier = modifier.padding(horizontal = 16.dp)
+        )
         return
     }
 
-    FlowRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        genres.forEach { genre ->
-            AssistChip(
-                onClick = {},
-                label = {
-                    Text(text = genre.name)
-                },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            )
-        }
-    }
-
-    Spacer(modifier = Modifier.height(12.dp))
-}
-
-@Composable
-private fun AnimeSynopsis(
-    synopsis: String,
-    culturalNotes: List<String>
-) {
     Column(
-        modifier = Modifier.padding(
-            horizontal = 16.dp,
-            vertical = 12.dp
-        )
+        modifier = modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = "Sinopsis",
+            text = "Géneros",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.Bold
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = synopsis.ifBlank { "Sinopsis no disponible." },
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        if (culturalNotes.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Notas culturales",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            culturalNotes.forEach { note ->
-                Text(
-                    text = "• $note",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            genres.forEach { genre ->
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        Text(text = genre.name)
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 )
             }
         }
@@ -393,44 +516,117 @@ private fun AnimeSynopsis(
 }
 
 @Composable
-private fun AnimeStats(anime: Anime) {
+private fun AnimeSynopsisSection(
+    synopsis: String,
+    culturalNotes: List<String>,
+    modifier: Modifier = Modifier
+) {
     Column(
-        modifier = Modifier.padding(horizontal = 16.dp)
+        modifier = modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = "Detalles",
+            text = "Sinopsis",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.Bold
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        RowOfStats(
-            label = "Episodios",
-            value = anime.totalEpisodes?.toString() ?: "Pendiente"
+        Text(
+            text = synopsis.ifBlank {
+                "Sinopsis no disponible por ahora."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        RowOfStats(
-            label = "Duración",
-            value = anime.durationType.toReadableText()
-        )
+        if (culturalNotes.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
 
-        RowOfStats(
-            label = "Estado",
-            value = anime.emissionStatus.toReadableText()
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
+            AnimeDevInfoCard(
+                title = "Notas culturales",
+                message = culturalNotes.joinToString(separator = "\n\n") { note ->
+                    "• $note"
+                }
+            )
+        }
     }
 }
 
 @Composable
-private fun RowOfStats(
+private fun AnimeStatsSection(
+    anime: Anime,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(22.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clearAndSetSemantics { }
+                )
+
+                Text(
+                    text = "Detalles",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            AnimeStatRow(
+                label = "Título original",
+                value = anime.originalTitle
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "No registrado"
+            )
+
+            AnimeStatRow(
+                label = "Año de estreno",
+                value = anime.releaseYear?.toString() ?: "Pendiente"
+            )
+
+            AnimeStatRow(
+                label = "Episodios",
+                value = anime.totalEpisodes?.toString() ?: "Pendiente"
+            )
+
+            AnimeStatRow(
+                label = "Duración",
+                value = anime.durationType.toReadableText()
+            )
+
+            AnimeStatRow(
+                label = "Estado",
+                value = anime.emissionStatus.toReadableText()
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnimeStatRow(
     label: String,
     value: String
 ) {
     Column(
-        modifier = Modifier.padding(vertical = 4.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
             text = label,
@@ -440,18 +636,8 @@ private fun RowOfStats(
 
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
-
-@Composable
-private fun AnimeDetailLoading() {
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        CircularProgressIndicator(
-            modifier = Modifier.align(Alignment.Center)
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
@@ -462,34 +648,47 @@ private fun AnimeDetailError(
     onRetry: () -> Unit,
     onBack: () -> Unit
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge
+        AnimeDevErrorState(
+            title = "No pudimos cargar este anime",
+            message = message,
+            onPrimaryAction = onRetry,
+            secondaryActionLabel = "Volver",
+            onSecondaryAction = onBack
         )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Button(onClick = onRetry) {
-            Text(text = "Reintentar")
-        }
-
-        OutlinedButton(
-            onClick = onBack,
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            Text(text = "Volver")
-        }
     }
 }
 
-@Preview
+private fun DurationType.toReadableText(): String {
+    return when (this) {
+        DurationType.SHORT -> "Corto (≤15 min)"
+        DurationType.MEDIUM -> "Medio (16-25 min)"
+        DurationType.LONG -> "Largo (30+ min)"
+    }
+}
+
+private fun DurationType.toShortReadableText(): String {
+    return when (this) {
+        DurationType.SHORT -> "Corta"
+        DurationType.MEDIUM -> "Media"
+        DurationType.LONG -> "Larga"
+    }
+}
+
+private fun EmissionStatus.toReadableText(): String {
+    return when (this) {
+        EmissionStatus.ON_AIR -> "En emisión"
+        EmissionStatus.FINISHED -> "Finalizado"
+        EmissionStatus.ON_BREAK -> "En pausa"
+    }
+}
+
+@Preview(showBackground = true)
 @Composable
 private fun AnimeDetailPreview() {
     AnimeDevTheme {
@@ -503,16 +702,4 @@ private fun AnimeDetailPreview() {
             )
         }
     }
-}
-
-private fun DurationType.toReadableText(): String = when (this) {
-    DurationType.SHORT -> "Corto (≤15 min)"
-    DurationType.MEDIUM -> "Medio (16-25 min)"
-    DurationType.LONG -> "Largo (30+ min)"
-}
-
-private fun EmissionStatus.toReadableText(): String = when (this) {
-    EmissionStatus.ON_AIR -> "En emisión"
-    EmissionStatus.FINISHED -> "Finalizado"
-    EmissionStatus.ON_BREAK -> "En pausa"
 }

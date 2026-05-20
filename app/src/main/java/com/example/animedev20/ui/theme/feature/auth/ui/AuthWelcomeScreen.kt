@@ -1,5 +1,6 @@
 package com.example.animedev20.ui.theme.feature.auth.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.data.DefaultAppContainer
+import com.example.animedev20.ui.theme.ux.AnimeDevCopy
 
 @Composable
 fun AuthWelcomeScreen(
@@ -75,27 +80,7 @@ fun AuthWelcomeScreen(
                 )
             )
     ) {
-        // Decorative circles
-        Box(
-            modifier = Modifier
-                .size(300.dp)
-                .align(Alignment.TopEnd)
-                .padding(top = 40.dp)
-                .clip(CircleShape)
-                .background(
-                    Color(0xFF6C63FF).copy(alpha = 0.15f)
-                )
-        )
-        Box(
-            modifier = Modifier
-                .size(200.dp)
-                .align(Alignment.BottomStart)
-                .padding(bottom = 60.dp)
-                .clip(CircleShape)
-                .background(
-                    Color(0xFFFF6B9D).copy(alpha = 0.10f)
-                )
-        )
+        DecorativeWelcomeBackground()
 
         Column(
             modifier = Modifier
@@ -106,125 +91,213 @@ fun AuthWelcomeScreen(
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(60.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-            // Logo + título
+            WelcomeHero()
+
+            WelcomeActions(
+                isLoading = uiState.isLoading,
+                message = uiState.message,
+                onGoToLogin = onGoToLogin,
+                onGoToRegister = onGoToRegister,
+                onContinueAsGuest = viewModel::continueAsGuest
+            )
+        }
+    }
+}
+
+@Composable
+private fun DecorativeWelcomeBackground() {
+    Box(
+        modifier = Modifier
+            .size(300.dp)
+            .clearAndSetSemantics { }
+            .padding(top = 40.dp)
+            .clip(CircleShape)
+            .background(
+                Color(0xFF6C63FF).copy(alpha = 0.15f)
+            )
+    )
+
+    Box(
+        modifier = Modifier
+            .size(210.dp)
+            .clearAndSetSemantics { }
+            .padding(bottom = 60.dp)
+            .clip(CircleShape)
+            .background(
+                Color(0xFFFF6B9D).copy(alpha = 0.10f)
+            )
+    )
+}
+
+@Composable
+private fun WelcomeHero() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF9D7CFF),
+                            Color(0xFF6C63FF)
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PlayArrow,
+                contentDescription = AnimeDevCopy.Accessibility.appLogo,
+                tint = Color.White,
+                modifier = Modifier.size(52.dp)
+            )
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = AnimeDevCopy.Auth.welcomeTitle,
+                fontSize = 38.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                letterSpacing = 1.sp,
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                text = AnimeDevCopy.Auth.welcomeSubtitle,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White.copy(alpha = 0.78f),
+                textAlign = TextAlign.Center,
+                lineHeight = 24.sp
+            )
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White.copy(alpha = 0.09f)
+            ),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Text(
+                text = AnimeDevCopy.Auth.welcomeHelper,
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.72f),
+                textAlign = TextAlign.Center,
+                lineHeight = 21.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun WelcomeActions(
+    isLoading: Boolean,
+    message: String?,
+    onGoToLogin: () -> Unit,
+    onGoToRegister: () -> Unit,
+    onContinueAsGuest: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        message?.let {
+            Text(
+                text = it,
+                color = Color(0xFFFF6B6B),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Button(
+            onClick = onGoToLogin,
+            enabled = !isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF6C63FF),
+                disabledContainerColor = Color(0xFF6C63FF).copy(alpha = 0.4f)
+            ),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Text(
+                text = AnimeDevCopy.Actions.login,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        OutlinedButton(
+            onClick = onGoToRegister,
+            enabled = !isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color.White,
+                disabledContentColor = Color.White.copy(alpha = 0.45f)
+            ),
+            border = BorderStroke(
+                width = 1.dp,
+                color = Color.White.copy(alpha = if (isLoading) 0.25f else 0.5f)
+            ),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Text(
+                text = AnimeDevCopy.Actions.register,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        if (isLoading) {
+            CircularProgressIndicator(
+                color = Color(0xFF9D7CFF),
+                modifier = Modifier
+                    .padding(top = 6.dp)
+                    .size(32.dp)
+            )
+        } else {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(90.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    Color(0xFF9D7CFF),
-                                    Color(0xFF6C63FF)
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
+                TextButton(
+                    onClick = onContinueAsGuest
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(48.dp)
+                    Text(
+                        text = AnimeDevCopy.Actions.continueAsGuest,
+                        color = Color.White.copy(alpha = 0.72f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
                 Text(
-                    text = "AnimeDev",
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
-                    letterSpacing = 1.sp
-                )
-
-                Text(
-                    text = "Descubre, aprende y juega\ncon el mundo del anime",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.75f),
+                    text = AnimeDevCopy.Auth.guestHelper,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.48f),
                     textAlign = TextAlign.Center,
-                    lineHeight = 24.sp
+                    lineHeight = 18.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
-            }
-
-            // Botones
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 40.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (uiState.message != null) {
-                    Text(
-                        text = uiState.message!!,
-                        color = Color(0xFFFF6B6B),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-
-                Button(
-                    onClick = onGoToLogin,
-                    enabled = !uiState.isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF6C63FF)
-                    ),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Text(
-                        text = "Iniciar sesión",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                OutlinedButton(
-                    onClick = onGoToRegister,
-                    enabled = !uiState.isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.White
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp, Color.White.copy(alpha = 0.5f)
-                    ),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Text(
-                        text = "Crear cuenta",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        color = Color(0xFF9D7CFF),
-                        modifier = Modifier.size(32.dp)
-                    )
-                } else {
-                    TextButton(
-                        onClick = { viewModel.continueAsGuest() },
-                        enabled = !uiState.isLoading
-                    ) {
-                        Text(
-                            text = "Continuar como invitado",
-                            color = Color.White.copy(alpha = 0.6f),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
             }
         }
     }

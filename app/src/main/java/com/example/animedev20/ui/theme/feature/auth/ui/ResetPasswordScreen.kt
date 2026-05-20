@@ -23,11 +23,12 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,6 +60,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.data.DefaultAppContainer
+import com.example.animedev20.ui.theme.ux.AnimeDevCopy
+import com.example.animedev20.ui.theme.ux.AnimeDevFormValidators
 
 @Composable
 fun ResetPasswordScreen(
@@ -79,12 +82,54 @@ fun ResetPasswordScreen(
     var token by rememberSaveable { mutableStateOf("") }
     var newPassword by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
+
     var newPasswordVisible by rememberSaveable { mutableStateOf(false) }
     var confirmPasswordVisible by rememberSaveable { mutableStateOf(false) }
+    var wasSubmitted by rememberSaveable { mutableStateOf(false) }
+    var passwordWasUpdated by rememberSaveable { mutableStateOf(false) }
 
-    val passwordsMatch = newPassword.isBlank() || confirmPassword.isBlank() || newPassword == confirmPassword
-    val canSubmit = email.isNotBlank() && token.isNotBlank() && newPassword.isNotBlank() && passwordsMatch && !uiState.isLoading
-    val isSuccess = uiState.message?.contains("correctamente", ignoreCase = true) == true
+    val emailValidation = AnimeDevFormValidators.validateEmail(email)
+    val tokenValidation = AnimeDevFormValidators.validateResetToken(token)
+    val newPasswordValidation = AnimeDevFormValidators.validateNewPassword(newPassword)
+    val confirmPasswordValidation = AnimeDevFormValidators.validateConfirmPassword(
+        password = newPassword,
+        confirmPassword = confirmPassword
+    )
+
+    val showEmailError = wasSubmitted && !emailValidation.isValid
+    val showTokenError = wasSubmitted && !tokenValidation.isValid
+    val showNewPasswordError = wasSubmitted && !newPasswordValidation.isValid
+    val showConfirmPasswordError = wasSubmitted && !confirmPasswordValidation.isValid
+
+    val canSubmit = AnimeDevFormValidators.canSubmitResetPassword(
+        email = email,
+        token = token,
+        newPassword = newPassword,
+        confirmPassword = confirmPassword,
+        isLoading = uiState.isLoading
+    )
+
+    val messageIsSuccess = uiState.message?.contains(
+        other = "actualizada",
+        ignoreCase = true
+    ) == true
+
+    if (messageIsSuccess) {
+        passwordWasUpdated = true
+    }
+
+    fun submitResetPassword() {
+        wasSubmitted = true
+        focusManager.clearFocus()
+
+        if (canSubmit) {
+            viewModel.resetPassword(
+                email = email,
+                token = token,
+                newPassword = newPassword
+            )
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -115,7 +160,7 @@ fun ResetPasswordScreen(
                 IconButton(onClick = onGoBack) {
                     Icon(
                         imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "Volver",
+                        contentDescription = AnimeDevCopy.Actions.goBack,
                         tint = Color.White
                     )
                 }
@@ -125,242 +170,388 @@ fun ResetPasswordScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Nueva contraseña",
+                        text = AnimeDevCopy.Auth.resetPasswordTitle,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
+
                     Text(
-                        text = "Ingresa el token que recibiste y tu nueva contraseña",
+                        text = AnimeDevCopy.Auth.resetPasswordSubtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.65f)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                if (passwordWasUpdated) {
+                    PasswordUpdatedCard()
+                }
 
-                if (isSuccess) {
-                    // Pantalla de éxito
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = {
+                        email = it
+                        if (wasSubmitted) {
+                            viewModel.consumeMessage()
+                            passwordWasUpdated = false
+                        }
+                    },
+                    label = {
+                        Text(AnimeDevCopy.Auth.emailLabel)
+                    },
+                    placeholder = {
+                        Text(AnimeDevCopy.Auth.emailPlaceholder)
+                    },
+                    leadingIcon = {
                         Icon(
-                            imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = null,
-                            tint = Color(0xFF6EE7B7),
-                            modifier = Modifier.size(72.dp)
+                            imageVector = Icons.Filled.Email,
+                            contentDescription = AnimeDevCopy.Accessibility.emailIcon,
+                            tint = if (showEmailError) {
+                                Color(0xFFFF6B6B)
+                            } else {
+                                Color(0xFF9D7CFF)
+                            }
                         )
-                        Text(
-                            text = "¡Contraseña actualizada!",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "Ya puedes iniciar sesión con tu nueva contraseña.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = onGoToLogin,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF6C63FF)
-                            ),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
+                    },
+                    isError = showEmailError,
+                    supportingText = {
+                        if (showEmailError) {
                             Text(
-                                text = "Ir a iniciar sesión",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold
+                                text = emailValidation.message.orEmpty(),
+                                color = Color(0xFFFF6B6B)
+                            )
+                        } else {
+                            Text(
+                                text = "Debe ser el mismo correo con el que generaste el token.",
+                                color = Color.White.copy(alpha = 0.48f)
                             )
                         }
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = {
+                            focusManager.moveFocus(FocusDirection.Down)
+                        }
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = authTextFieldColors()
+                )
+
+                OutlinedTextField(
+                    value = token,
+                    onValueChange = {
+                        token = it
+                        if (wasSubmitted) {
+                            viewModel.consumeMessage()
+                            passwordWasUpdated = false
+                        }
+                    },
+                    label = {
+                        Text(AnimeDevCopy.Auth.tokenLabel)
+                    },
+                    placeholder = {
+                        Text(AnimeDevCopy.Auth.tokenPlaceholder)
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = AnimeDevCopy.Accessibility.tokenIcon,
+                            tint = if (showTokenError) {
+                                Color(0xFFFF6B6B)
+                            } else {
+                                Color(0xFF9D7CFF)
+                            }
+                        )
+                    },
+                    isError = showTokenError,
+                    supportingText = {
+                        if (showTokenError) {
+                            Text(
+                                text = tokenValidation.message.orEmpty(),
+                                color = Color(0xFFFF6B6B)
+                            )
+                        } else {
+                            Text(
+                                text = "Pega el token temporal que generaste en la pantalla anterior.",
+                                color = Color.White.copy(alpha = 0.48f)
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = {
+                            focusManager.moveFocus(FocusDirection.Down)
+                        }
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = authTextFieldColors()
+                )
+
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = {
+                        newPassword = it
+                        if (wasSubmitted) {
+                            viewModel.consumeMessage()
+                            passwordWasUpdated = false
+                        }
+                    },
+                    label = {
+                        Text(AnimeDevCopy.Auth.newPasswordLabel)
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = AnimeDevCopy.Accessibility.passwordIcon,
+                            tint = if (showNewPasswordError) {
+                                Color(0xFFFF6B6B)
+                            } else {
+                                Color(0xFF9D7CFF)
+                            }
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                newPasswordVisible = !newPasswordVisible
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (newPasswordVisible) {
+                                    Icons.Filled.VisibilityOff
+                                } else {
+                                    Icons.Filled.Visibility
+                                },
+                                contentDescription = if (newPasswordVisible) {
+                                    AnimeDevCopy.Accessibility.hidePassword
+                                } else {
+                                    AnimeDevCopy.Accessibility.showPassword
+                                },
+                                tint = Color.White.copy(alpha = 0.6f)
+                            )
+                        }
+                    },
+                    visualTransformation = if (newPasswordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    isError = showNewPasswordError,
+                    supportingText = {
+                        if (showNewPasswordError) {
+                            Text(
+                                text = newPasswordValidation.message.orEmpty(),
+                                color = Color(0xFFFF6B6B)
+                            )
+                        } else {
+                            Text(
+                                text = "Usa mínimo 6 caracteres.",
+                                color = Color.White.copy(alpha = 0.48f)
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = {
+                            focusManager.moveFocus(FocusDirection.Down)
+                        }
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = authTextFieldColors()
+                )
+
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = {
+                        confirmPassword = it
+                        if (wasSubmitted) {
+                            viewModel.consumeMessage()
+                            passwordWasUpdated = false
+                        }
+                    },
+                    label = {
+                        Text(AnimeDevCopy.Auth.confirmPasswordLabel)
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = AnimeDevCopy.Accessibility.passwordIcon,
+                            tint = if (showConfirmPasswordError) {
+                                Color(0xFFFF6B6B)
+                            } else {
+                                Color(0xFF9D7CFF)
+                            }
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                confirmPasswordVisible = !confirmPasswordVisible
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (confirmPasswordVisible) {
+                                    Icons.Filled.VisibilityOff
+                                } else {
+                                    Icons.Filled.Visibility
+                                },
+                                contentDescription = if (confirmPasswordVisible) {
+                                    AnimeDevCopy.Accessibility.hidePassword
+                                } else {
+                                    AnimeDevCopy.Accessibility.showPassword
+                                },
+                                tint = Color.White.copy(alpha = 0.6f)
+                            )
+                        }
+                    },
+                    visualTransformation = if (confirmPasswordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    isError = showConfirmPasswordError,
+                    supportingText = {
+                        if (showConfirmPasswordError) {
+                            Text(
+                                text = confirmPasswordValidation.message.orEmpty(),
+                                color = Color(0xFFFF6B6B)
+                            )
+                        } else {
+                            Text(
+                                text = "Vuelve a escribir la contraseña para confirmar.",
+                                color = Color.White.copy(alpha = 0.48f)
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            submitResetPassword()
+                        }
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = authTextFieldColors()
+                )
+
+                uiState.message?.let { message ->
+                    Text(
+                        text = message,
+                        color = if (messageIsSuccess) {
+                            Color(0xFF6EE7B7)
+                        } else {
+                            Color(0xFFFF6B6B)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                if (uiState.isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = Color(0xFF9D7CFF),
+                            modifier = Modifier.size(36.dp)
+                        )
                     }
                 } else {
-                    // Formulario de reset
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text("Correo electrónico") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Filled.Email,
-                                contentDescription = null,
-                                tint = Color(0xFF9D7CFF)
-                            )
+                    Button(
+                        onClick = {
+                            submitResetPassword()
                         },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Next
+                        enabled = !uiState.isLoading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF6C63FF),
+                            disabledContainerColor = Color(0xFF6C63FF).copy(alpha = 0.4f)
                         ),
-                        keyboardActions = KeyboardActions(
-                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                        ),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = authTextFieldColors()
-                    )
-
-                    OutlinedTextField(
-                        value = token,
-                        onValueChange = { token = it },
-                        label = { Text("Token de recuperación") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Filled.Tag,
-                                contentDescription = null,
-                                tint = Color(0xFF9D7CFF)
-                            )
-                        },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        keyboardActions = KeyboardActions(
-                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                        ),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = authTextFieldColors()
-                    )
-
-                    OutlinedTextField(
-                        value = newPassword,
-                        onValueChange = { newPassword = it },
-                        label = { Text("Nueva contraseña") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Filled.Lock,
-                                contentDescription = null,
-                                tint = Color(0xFF9D7CFF)
-                            )
-                        },
-                        trailingIcon = {
-                            IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
-                                Icon(
-                                    imageVector = if (newPasswordVisible) Icons.Filled.VisibilityOff
-                                    else Icons.Filled.Visibility,
-                                    contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.6f)
-                                )
-                            }
-                        },
-                        visualTransformation = if (newPasswordVisible) VisualTransformation.None
-                        else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Next
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                        ),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = authTextFieldColors()
-                    )
-
-                    OutlinedTextField(
-                        value = confirmPassword,
-                        onValueChange = { confirmPassword = it },
-                        label = { Text("Confirmar nueva contraseña") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Filled.Lock,
-                                contentDescription = null,
-                                tint = if (!passwordsMatch) Color(0xFFFF6B6B)
-                                else Color(0xFF9D7CFF)
-                            )
-                        },
-                        trailingIcon = {
-                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                                Icon(
-                                    imageVector = if (confirmPasswordVisible) Icons.Filled.VisibilityOff
-                                    else Icons.Filled.Visibility,
-                                    contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.6f)
-                                )
-                            }
-                        },
-                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None
-                        else PasswordVisualTransformation(),
-                        isError = !passwordsMatch,
-                        supportingText = if (!passwordsMatch) {
-                            { Text("Las contraseñas no coinciden", color = Color(0xFFFF6B6B)) }
-                        } else null,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                focusManager.clearFocus()
-                                if (canSubmit) viewModel.resetPassword(email, token, newPassword)
-                            }
-                        ),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = authTextFieldColors()
-                    )
-
-                    if (uiState.message != null && !isSuccess) {
-                        Text(
-                            text = uiState.message!!,
-                            color = Color(0xFFFF6B6B),
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    if (uiState.isLoading) {
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(
-                                color = Color(0xFF9D7CFF),
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                    } else {
-                        Button(
-                            onClick = { viewModel.resetPassword(email, token, newPassword) },
-                            enabled = canSubmit,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF6C63FF),
-                                disabledContainerColor = Color(0xFF6C63FF).copy(alpha = 0.4f)
-                            ),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Text(
-                                text = "Actualizar contraseña",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-
-                    TextButton(
-                        onClick = onGoToLogin,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Text(
-                            text = "Volver al inicio de sesión",
-                            color = Color.White.copy(alpha = 0.6f),
-                            style = MaterialTheme.typography.bodyMedium
+                            text = AnimeDevCopy.Auth.goToResetPassword,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
 
+                TextButton(
+                    onClick = onGoToLogin,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text(
+                        text = AnimeDevCopy.Auth.backToLogin,
+                        color = Color.White.copy(alpha = 0.68f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PasswordUpdatedCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.10f)
+        ),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Icon(
+                imageVector = Icons.Filled.CheckCircle,
+                contentDescription = null,
+                tint = Color(0xFF6EE7B7)
+            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = AnimeDevCopy.Auth.passwordUpdatedTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                Text(
+                    text = AnimeDevCopy.Auth.passwordUpdatedMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.68f)
+                )
             }
         }
     }

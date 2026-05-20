@@ -59,6 +59,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.animedev20.ui.theme.data.AppContainer
 import com.example.animedev20.ui.theme.data.DefaultAppContainer
+import com.example.animedev20.ui.theme.ux.AnimeDevCopy
+import com.example.animedev20.ui.theme.ux.AnimeDevFormValidators
 
 @Composable
 fun LoginScreen(
@@ -80,11 +82,33 @@ fun LoginScreen(
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var wasSubmitted by rememberSaveable { mutableStateOf(false) }
+
+    val emailValidation = AnimeDevFormValidators.validateEmail(email)
+    val passwordValidation = AnimeDevFormValidators.validatePassword(password)
+
+    val showEmailError = wasSubmitted && !emailValidation.isValid
+    val showPasswordError = wasSubmitted && !passwordValidation.isValid
+
+    val canSubmit = AnimeDevFormValidators.canSubmitLogin(
+        email = email,
+        password = password,
+        isLoading = uiState.isLoading
+    )
 
     LaunchedEffect(uiState.nextRoute) {
         val route = uiState.nextRoute ?: return@LaunchedEffect
         onAuthSuccessRoute(route)
         viewModel.consumeNavigation()
+    }
+
+    fun submitLogin() {
+        wasSubmitted = true
+        focusManager.clearFocus()
+
+        if (canSubmit) {
+            viewModel.login(email, password)
+        }
     }
 
     Box(
@@ -107,7 +131,6 @@ fun LoginScreen(
                 .imePadding()
                 .verticalScroll(rememberScrollState())
         ) {
-            // Top bar con botón atrás
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -117,7 +140,7 @@ fun LoginScreen(
                 IconButton(onClick = onGoBack) {
                     Icon(
                         imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "Volver",
+                        contentDescription = AnimeDevCopy.Actions.goBack,
                         tint = Color.White
                     )
                 }
@@ -129,16 +152,16 @@ fun LoginScreen(
                     .padding(horizontal = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Encabezado
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Bienvenido de nuevo",
+                        text = AnimeDevCopy.Auth.loginTitle,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
+
                     Text(
-                        text = "Inicia sesión para continuar tu experiencia",
+                        text = AnimeDevCopy.Auth.loginSubtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.65f)
                     )
@@ -146,63 +169,128 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Campo correo
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Correo electrónico") },
+                    onValueChange = {
+                        email = it
+                        if (wasSubmitted) {
+                            viewModel.consumeMessage()
+                        }
+                    },
+                    label = {
+                        Text(AnimeDevCopy.Auth.emailLabel)
+                    },
+                    placeholder = {
+                        Text(AnimeDevCopy.Auth.emailPlaceholder)
+                    },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Filled.Email,
-                            contentDescription = null,
-                            tint = Color(0xFF9D7CFF)
+                            contentDescription = AnimeDevCopy.Accessibility.emailIcon,
+                            tint = if (showEmailError) {
+                                Color(0xFFFF6B6B)
+                            } else {
+                                Color(0xFF9D7CFF)
+                            }
                         )
+                    },
+                    isError = showEmailError,
+                    supportingText = {
+                        if (showEmailError) {
+                            Text(
+                                text = emailValidation.message.orEmpty(),
+                                color = Color(0xFFFF6B6B)
+                            )
+                        } else {
+                            Text(
+                                text = "Usa el correo con el que creaste tu cuenta.",
+                                color = Color.White.copy(alpha = 0.48f)
+                            )
+                        }
                     },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next
                     ),
                     keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                        onNext = {
+                            focusManager.moveFocus(FocusDirection.Down)
+                        }
                     ),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = authTextFieldColors()
                 )
 
-                // Campo contraseña
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Contraseña") },
+                    onValueChange = {
+                        password = it
+                        if (wasSubmitted) {
+                            viewModel.consumeMessage()
+                        }
+                    },
+                    label = {
+                        Text(AnimeDevCopy.Auth.passwordLabel)
+                    },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Filled.Lock,
-                            contentDescription = null,
-                            tint = Color(0xFF9D7CFF)
+                            contentDescription = AnimeDevCopy.Accessibility.passwordIcon,
+                            tint = if (showPasswordError) {
+                                Color(0xFFFF6B6B)
+                            } else {
+                                Color(0xFF9D7CFF)
+                            }
                         )
                     },
                     trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        IconButton(
+                            onClick = {
+                                passwordVisible = !passwordVisible
+                            }
+                        ) {
                             Icon(
-                                imageVector = if (passwordVisible) Icons.Filled.VisibilityOff
-                                else Icons.Filled.Visibility,
-                                contentDescription = if (passwordVisible) "Ocultar contraseña"
-                                else "Mostrar contraseña",
+                                imageVector = if (passwordVisible) {
+                                    Icons.Filled.VisibilityOff
+                                } else {
+                                    Icons.Filled.Visibility
+                                },
+                                contentDescription = if (passwordVisible) {
+                                    AnimeDevCopy.Accessibility.hidePassword
+                                } else {
+                                    AnimeDevCopy.Accessibility.showPassword
+                                },
                                 tint = Color.White.copy(alpha = 0.6f)
                             )
                         }
                     },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None
-                    else PasswordVisualTransformation(),
+                    visualTransformation = if (passwordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    isError = showPasswordError,
+                    supportingText = {
+                        if (showPasswordError) {
+                            Text(
+                                text = passwordValidation.message.orEmpty(),
+                                color = Color(0xFFFF6B6B)
+                            )
+                        } else {
+                            Text(
+                                text = "Debe tener al menos 6 caracteres.",
+                                color = Color.White.copy(alpha = 0.48f)
+                            )
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(
                         onDone = {
-                            focusManager.clearFocus()
-                            viewModel.login(email, password)
+                            submitLogin()
                         }
                     ),
                     singleLine = true,
@@ -210,21 +298,22 @@ fun LoginScreen(
                     colors = authTextFieldColors()
                 )
 
-                // Link olvidé contraseña
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
                     TextButton(onClick = onGoToForgotPassword) {
                         Text(
-                            text = "¿Olvidaste tu contraseña?",
+                            text = AnimeDevCopy.Auth.forgotPasswordAction,
                             color = Color(0xFF9D7CFF),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
 
-                // Mensaje de error
-                if (uiState.message != null) {
+                uiState.message?.let { message ->
                     Text(
-                        text = uiState.message!!,
+                        text = message,
                         color = Color(0xFFFF6B6B),
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center,
@@ -232,9 +321,11 @@ fun LoginScreen(
                     )
                 }
 
-                // Botón entrar
                 if (uiState.isLoading) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator(
                             color = Color(0xFF9D7CFF),
                             modifier = Modifier.size(36.dp)
@@ -242,8 +333,10 @@ fun LoginScreen(
                     }
                 } else {
                     Button(
-                        onClick = { viewModel.login(email, password) },
-                        enabled = email.isNotBlank() && password.isNotBlank(),
+                        onClick = {
+                            submitLogin()
+                        },
+                        enabled = !uiState.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
@@ -254,27 +347,27 @@ fun LoginScreen(
                         shape = MaterialTheme.shapes.medium
                     ) {
                         Text(
-                            text = "Entrar",
+                            text = AnimeDevCopy.Actions.login,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
 
-                // Enlace a registro
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "¿No tienes cuenta?",
+                        text = AnimeDevCopy.Auth.noAccount,
                         color = Color.White.copy(alpha = 0.6f),
                         style = MaterialTheme.typography.bodyMedium
                     )
+
                     TextButton(onClick = onGoToRegister) {
                         Text(
-                            text = "Regístrate",
+                            text = AnimeDevCopy.Actions.goToRegister,
                             color = Color(0xFF9D7CFF),
                             fontWeight = FontWeight.SemiBold
                         )
@@ -295,5 +388,11 @@ fun authTextFieldColors() = OutlinedTextFieldDefaults.colors(
     unfocusedLabelColor = Color.White.copy(alpha = 0.5f),
     focusedBorderColor = Color(0xFF9D7CFF),
     unfocusedBorderColor = Color.White.copy(alpha = 0.25f),
-    cursorColor = Color(0xFF9D7CFF)
+    cursorColor = Color(0xFF9D7CFF),
+    errorTextColor = Color.White,
+    errorLabelColor = Color(0xFFFF6B6B),
+    errorBorderColor = Color(0xFFFF6B6B),
+    errorCursorColor = Color(0xFFFF6B6B),
+    errorLeadingIconColor = Color(0xFFFF6B6B),
+    errorSupportingTextColor = Color(0xFFFF6B6B)
 )

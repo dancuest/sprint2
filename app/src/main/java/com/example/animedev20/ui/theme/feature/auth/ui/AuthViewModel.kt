@@ -16,6 +16,8 @@ import com.example.animedev20.ui.theme.data.remote.RegisterRequest
 import com.example.animedev20.ui.theme.data.remote.ResetPasswordRequest
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import com.example.animedev20.ui.theme.navigation.Screen
+import com.example.animedev20.ui.theme.ux.AnimeDevCopy
+import com.example.animedev20.ui.theme.ux.AnimeDevFormValidators
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,8 +50,13 @@ class AuthViewModel(
     }
 
     fun login(email: String, password: String) {
-        if (email.isBlank() || password.isBlank()) {
-            showMessage("Completa correo y contraseña")
+        val validationError = AnimeDevFormValidators.loginError(
+            email = email,
+            password = password
+        )
+
+        if (validationError != null) {
+            showMessage(validationError)
             return
         }
 
@@ -60,6 +67,7 @@ class AuthViewModel(
                     password = password
                 )
             )
+
             persistSession(response)
             navigateToRoute(resolveRouteAfterLogin())
         }
@@ -70,8 +78,14 @@ class AuthViewModel(
         password: String,
         displayName: String
     ) {
-        if (email.isBlank() || password.isBlank()) {
-            showMessage("Completa correo y contraseña")
+        val validationError = AnimeDevFormValidators.registerError(
+            displayName = displayName,
+            email = email,
+            password = password
+        )
+
+        if (validationError != null) {
+            showMessage(validationError)
             return
         }
 
@@ -92,8 +106,10 @@ class AuthViewModel(
     }
 
     fun forgotPassword(email: String) {
-        if (email.isBlank()) {
-            showMessage("Ingresa tu correo")
+        val validationError = AnimeDevFormValidators.forgotPasswordError(email)
+
+        if (validationError != null) {
+            showMessage(validationError)
             return
         }
 
@@ -110,14 +126,17 @@ class AuthViewModel(
             }.onSuccess { response ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    message = response.message,
+                    message = AnimeDevCopy.Success.tokenGenerated,
                     demoResetToken = response.resetToken,
                     demoResetExpiresAt = response.expiresAt
                 )
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    message = error.message ?: "No fue posible generar el token"
+                    message = friendlyAuthError(
+                        error = error,
+                        fallback = "No pudimos generar el token. Revisa el correo e inténtalo de nuevo."
+                    )
                 )
             }
         }
@@ -128,8 +147,21 @@ class AuthViewModel(
         token: String,
         newPassword: String
     ) {
-        if (email.isBlank() || token.isBlank() || newPassword.isBlank()) {
-            showMessage("Completa correo, token y nueva contraseña")
+        val emailValidation = AnimeDevFormValidators.validateEmail(email)
+        if (!emailValidation.isValid) {
+            showMessage(emailValidation.message ?: AnimeDevCopy.Validation.invalidEmail)
+            return
+        }
+
+        val tokenValidation = AnimeDevFormValidators.validateResetToken(token)
+        if (!tokenValidation.isValid) {
+            showMessage(tokenValidation.message ?: AnimeDevCopy.Validation.requiredToken)
+            return
+        }
+
+        val passwordValidation = AnimeDevFormValidators.validateNewPassword(newPassword)
+        if (!passwordValidation.isValid) {
+            showMessage(passwordValidation.message ?: AnimeDevCopy.Validation.requiredNewPassword)
             return
         }
 
@@ -147,15 +179,18 @@ class AuthViewModel(
                         newPassword = newPassword
                     )
                 )
-            }.onSuccess { response ->
+            }.onSuccess {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    message = response.message
+                    message = "Contraseña actualizada correctamente."
                 )
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    message = error.message ?: "No fue posible restablecer la contraseña"
+                    message = friendlyAuthError(
+                        error = error,
+                        fallback = "No pudimos restablecer la contraseña. Revisa el token e inténtalo de nuevo."
+                    )
                 )
             }
         }
@@ -176,13 +211,17 @@ class AuthViewModel(
                 message = null
             )
 
-            runCatching { action() }
-                .onFailure { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        message = error.message ?: "Ocurrió un error de autenticación"
+            runCatching {
+                action()
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    message = friendlyAuthError(
+                        error = error,
+                        fallback = AnimeDevCopy.Errors.authGeneric
                     )
-                }
+                )
+            }
         }
     }
 
@@ -195,6 +234,7 @@ class AuthViewModel(
     private suspend fun persistSession(response: AuthSessionResponse) {
         tokenStore.saveToken(response.accessToken)
         tokenStore.saveUserId(response.userId)
+
         response.profile?.deviceId
             ?.takeIf { it.isNotBlank() }
             ?.let(tokenStore::saveDeviceId)
@@ -220,6 +260,7 @@ class AuthViewModel(
     ): String {
         val routeFromSettings = runCatching {
             val settings = userRepository.getUserSettings()
+
             if (settings.hasCompletedOnboarding) {
                 Screen.Home.route
             } else {
@@ -255,7 +296,52 @@ class AuthViewModel(
     }
 
     private fun showMessage(text: String) {
-        _uiState.value = _uiState.value.copy(message = text)
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            message = text
+        )
+    }
+
+    private fun friendlyAuthError(
+        error: Throwable,
+        fallback: String
+    ): String {
+        val rawMessage = error.message.orEmpty()
+
+        return when {
+            rawMessage.contains("401", ignoreCase = true) ||
+                    rawMessage.contains("Unauthorized", ignoreCase = true) -> {
+                "Correo o contraseña incorrectos. Revisa tus datos e inténtalo de nuevo."
+            }
+
+            rawMessage.contains("404", ignoreCase = true) ||
+                    rawMessage.contains("not found", ignoreCase = true) -> {
+                "No encontramos una cuenta con esos datos."
+            }
+
+            rawMessage.contains("409", ignoreCase = true) ||
+                    rawMessage.contains("conflict", ignoreCase = true) -> {
+                "Ya existe una cuenta registrada con ese correo."
+            }
+
+            rawMessage.contains("422", ignoreCase = true) ||
+                    rawMessage.contains("400", ignoreCase = true) -> {
+                "Hay un dato que no cumple el formato esperado. Revisa el formulario."
+            }
+
+            rawMessage.contains("500", ignoreCase = true) ||
+                    rawMessage.contains("503", ignoreCase = true) -> {
+                AnimeDevCopy.Errors.server
+            }
+
+            rawMessage.contains("timeout", ignoreCase = true) ||
+                    rawMessage.contains("Unable to resolve host", ignoreCase = true) ||
+                    rawMessage.contains("Failed to connect", ignoreCase = true) -> {
+                AnimeDevCopy.Errors.network
+            }
+
+            else -> fallback
+        }
     }
 
     companion object {
