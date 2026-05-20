@@ -23,9 +23,6 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material.icons.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.ReportProblem
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -38,7 +35,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -52,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -93,12 +90,23 @@ fun TriviaPlayScreen(
     onGoToTrivia: () -> Unit,
     onAddQuestion: () -> Unit,
     onGoToAnimeInfo: () -> Unit,
+    onGoToLogin: () -> Unit = {},
+    onGoToRegister: () -> Unit = {},
     appContainer: AppContainer? = null
 ) {
     val context = LocalContext.current.applicationContext
 
     val remoteAppContainer = remember(context) {
         DefaultAppContainer(context = context)
+    }
+
+    val isGuest by produceState(
+        initialValue = true,
+        key1 = remoteAppContainer
+    ) {
+        value = runCatching {
+            remoteAppContainer.userRepository.getUserProfile().email.isBlank()
+        }.getOrDefault(true)
     }
 
     val viewModel: TriviaPlayViewModel = viewModel(
@@ -124,8 +132,13 @@ fun TriviaPlayScreen(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var questionToReport by remember { mutableStateOf<TriviaQuestion?>(null) }
-    var reportReason by remember { mutableStateOf("") }
+    var questionToReport by remember {
+        mutableStateOf<TriviaQuestion?>(null)
+    }
+
+    var reportReason by remember {
+        mutableStateOf("")
+    }
 
     val currentAnimeTitle = (uiState as? TriviaPlayUiState.Success)
         ?.state
@@ -134,6 +147,7 @@ fun TriviaPlayScreen(
 
     LaunchedEffect(reportUiState.message) {
         val msg = reportUiState.message
+
         if (msg != null) {
             snackbarHostState.showSnackbar(msg)
             reportViewModel.consumeMessage()
@@ -200,6 +214,7 @@ fun TriviaPlayScreen(
 
             is TriviaPlayUiState.Success -> TriviaPlayContent(
                 state = state.state,
+                isGuest = isGuest,
                 onDifficultySelected = viewModel::selectDifficulty,
                 onAnswer = viewModel::answerQuestion,
                 onNext = viewModel::goToNextQuestion,
@@ -207,8 +222,10 @@ fun TriviaPlayScreen(
                 onGoToHome = onGoToHome,
                 onGoToTrivia = onGoToTrivia,
                 onGoToAnimeInfo = onGoToAnimeInfo,
+                onGoToLogin = onGoToLogin,
+                onGoToRegister = onGoToRegister,
                 onAddQuestion = onAddQuestion,
-                onReportQuestion = { question: TriviaQuestion ->
+                onReportQuestion = { question ->
                     questionToReport = question
                     reportReason = ""
                 },
@@ -219,14 +236,12 @@ fun TriviaPlayScreen(
         }
     }
 
-    val currentReportUiState = reportUiState
-
-    questionToReport?.let { selectedQuestion: TriviaQuestion ->
+    questionToReport?.let { selectedQuestion ->
         TriviaReportDialog(
             questionText = selectedQuestion.question,
             reason = reportReason,
-            isSending = currentReportUiState.isSending,
-            onReasonChange = { value: String ->
+            isSending = reportUiState.isSending,
+            onReasonChange = { value ->
                 reportReason = value.take(1000)
             },
             onSend = {
@@ -247,6 +262,7 @@ fun TriviaPlayScreen(
 @Composable
 private fun TriviaPlayContent(
     state: TriviaPlayState,
+    isGuest: Boolean,
     onDifficultySelected: (TriviaDifficulty) -> Unit,
     onAnswer: (Int) -> Unit,
     onNext: () -> Unit,
@@ -254,6 +270,8 @@ private fun TriviaPlayContent(
     onGoToHome: () -> Unit,
     onGoToTrivia: () -> Unit,
     onGoToAnimeInfo: () -> Unit,
+    onGoToLogin: () -> Unit,
+    onGoToRegister: () -> Unit,
     onAddQuestion: () -> Unit,
     onReportQuestion: (TriviaQuestion) -> Unit,
     modifier: Modifier = Modifier
@@ -286,10 +304,13 @@ private fun TriviaPlayContent(
 
             state.finished -> TriviaResultCard(
                 state = state,
+                isGuest = isGuest,
                 onRestart = onRestart,
                 onGoToHome = onGoToHome,
                 onGoToTrivia = onGoToTrivia,
-                onGoToAnimeInfo = onGoToAnimeInfo
+                onGoToAnimeInfo = onGoToAnimeInfo,
+                onGoToLogin = onGoToLogin,
+                onGoToRegister = onGoToRegister
             )
 
             else -> TriviaQuestionCard(
@@ -399,7 +420,7 @@ private fun DifficultySelector(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            TriviaDifficulty.entries.forEach { difficulty ->
+            TriviaDifficulty.values().forEach { difficulty ->
                 FilterChip(
                     selected = selectedDifficulty == difficulty,
                     onClick = {
@@ -454,7 +475,7 @@ private fun NoQuestionsForDifficultyCard(
 ) {
     AnimeDevErrorState(
         title = "Faltan preguntas para ${difficulty.displayName}",
-        message = "Este anime todavía no tiene suficientes preguntas aprobadas para esta dificultad. Puedes enviar una pregunta para ayudar a completar el banco.",
+        message = "Este anime todavía no tiene preguntas aprobadas para esta dificultad. Puedes enviar una pregunta para ayudar a completar el banco.",
         primaryActionLabel = "Enviar pregunta para agregar",
         onPrimaryAction = onAddQuestion,
         secondaryActionLabel = "Volver a la info del anime",
@@ -516,7 +537,7 @@ private fun TriviaQuestionCard(
                 )
 
                 LinearProgressIndicator(
-                    progress = { progress },
+                    progress = progress,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -597,6 +618,7 @@ private fun QuestionFeedbackHint() {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TriviaAnswerOption(
     optionIndex: Int,
@@ -692,15 +714,16 @@ private fun AnswerFeedbackCard(
     )
 }
 
-
-
 @Composable
 private fun TriviaResultCard(
     state: TriviaPlayState,
+    isGuest: Boolean,
     onRestart: () -> Unit,
     onGoToHome: () -> Unit,
     onGoToTrivia: () -> Unit,
-    onGoToAnimeInfo: () -> Unit
+    onGoToAnimeInfo: () -> Unit,
+    onGoToLogin: () -> Unit,
+    onGoToRegister: () -> Unit
 ) {
     val resultMessage = buildResultMessage(
         score = state.score,
@@ -765,6 +788,36 @@ private fun TriviaResultCard(
                 }
             )
 
+            if (isGuest) {
+                AnimeDevInfoCard(
+                    title = "¿Quieres guardar tus resultados?",
+                    message = "Como invitado puedes jugar y enviar preguntas, pero tus puntajes no se guardan. Crea una cuenta para desbloquear tu sección de trivias y seguir tu progreso."
+                )
+
+                Button(
+                    onClick = onGoToRegister,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
+                    Text("Crear cuenta")
+                }
+
+                OutlinedButton(
+                    onClick = onGoToLogin,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Ya tengo cuenta")
+                }
+            } else {
+                OutlinedButton(
+                    onClick = onGoToTrivia,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Ir a mis trivias")
+                }
+            }
+
             Button(
                 onClick = onGoToHome,
                 modifier = Modifier
@@ -787,13 +840,6 @@ private fun TriviaResultCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Volver a la info del anime")
-            }
-
-            OutlinedButton(
-                onClick = onGoToTrivia,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Ir a mis trivias")
             }
 
             TextButton(onClick = onRestart) {
@@ -851,7 +897,7 @@ private fun buildResultMessage(
     totalQuestions: Int
 ): String {
     if (totalQuestions == 0) {
-        return "Tu resultado se ha guardado para este anime."
+        return "Terminaste esta trivia."
     }
 
     val ratio = score.toFloat() / totalQuestions.toFloat()
@@ -893,7 +939,8 @@ private fun String.isQuestionBankError(): Boolean {
             normalized.contains("aún no tiene preguntas") ||
             normalized.contains("aun no tiene preguntas") ||
             normalized.contains("necesita preguntas") ||
-            normalized.contains("no tiene suficientes preguntas")
+            normalized.contains("no tiene suficientes preguntas") ||
+            normalized.contains("no tiene preguntas aprobadas")
 }
 
 @Composable
@@ -907,7 +954,7 @@ private fun TriviaQuestionBankError(
         AnimeDevErrorState(
             title = "Esta trivia necesita más preguntas",
             message = message.ifBlank {
-                "Este anime todavía no tiene suficientes preguntas aprobadas para jugar."
+                "Este anime todavía no tiene preguntas aprobadas para jugar."
             },
             primaryActionLabel = "Enviar pregunta para agregar",
             onPrimaryAction = onAddQuestion,
@@ -935,9 +982,6 @@ private fun TriviaPlayError(
         )
     }
 }
-
-
-
 
 @Composable
 private fun BoxWithCenteredContent(
@@ -982,6 +1026,7 @@ private fun TriviaPlayPreview() {
                     isAnswerCorrect = true,
                     score = 1
                 ),
+                isGuest = false,
                 onDifficultySelected = {},
                 onAnswer = {},
                 onNext = {},
@@ -989,6 +1034,8 @@ private fun TriviaPlayPreview() {
                 onGoToHome = {},
                 onGoToTrivia = {},
                 onGoToAnimeInfo = {},
+                onGoToLogin = {},
+                onGoToRegister = {},
                 onAddQuestion = {},
                 onReportQuestion = {}
             )

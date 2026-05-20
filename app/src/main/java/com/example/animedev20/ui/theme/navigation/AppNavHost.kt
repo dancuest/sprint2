@@ -313,6 +313,12 @@ fun AppNavHost(
                         }
                         launchSingleTop = true
                     }
+                },
+                onGoToLogin = {
+                    navController.navigate(Screen.Login.route)
+                },
+                onGoToRegister = {
+                    navController.navigate(Screen.Register.route)
                 }
             )
         }
