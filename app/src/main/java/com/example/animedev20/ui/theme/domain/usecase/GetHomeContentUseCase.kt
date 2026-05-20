@@ -18,6 +18,9 @@ class GetHomeContentUseCase(
         private const val RETRY_DELAY_MS = 1_200L
         private const val MAX_ATTEMPTS_PER_GENRE = 1
         private const val TARGET_SECTION_SIZE = 10
+
+        private const val FALLBACK_SPANISH_SYNOPSIS =
+            "Toca para ver la información completa de este anime y descubrir por qué puede encajar con tus gustos."
     }
 
     suspend operator fun invoke(): Result<HomeContent> = try {
@@ -40,13 +43,15 @@ class GetHomeContentUseCase(
             )
 
         /**
-         * El hero del Home debe mostrarse siempre con sinopsis en español.
+         * Regla de negocio:
+         * El hero principal del Home nunca debe mostrar una sinopsis en inglés.
          *
-         * El candidato puede venir desde recomendaciones adaptativas o desde género,
-         * endpoints que pueden traer datos resumidos. Por eso se hidrata con /detail,
-         * que en backend devuelve la sinopsis traducida.
+         * Las recomendaciones adaptativas y los listados por género pueden venir como
+         * Anime resumido. Por eso aquí se fuerza hidratación usando /anime/{id}/detail.
+         * Si esa hidratación falla, se intenta usar el hero general del backend.
+         * Si todo falla, se conserva el anime candidato pero con copy seguro en español.
          */
-        val heroAnime = hydrateHeroAnime(heroCandidate)
+        val heroAnime = resolveSpanishHeroAnime(heroCandidate)
 
         val recommendationList = resolveRecommendationList(
             heroAnime = heroAnime,
@@ -125,6 +130,7 @@ class GetHomeContentUseCase(
 
             for (anime in candidates) {
                 if (anime.id == heroAnime.id) continue
+
                 uniqueRecommendations.putIfAbsent(anime.id, anime)
 
                 if (uniqueRecommendations.size >= TARGET_SECTION_SIZE) {
@@ -179,11 +185,25 @@ class GetHomeContentUseCase(
         }.getOrNull()
     }
 
-    private suspend fun hydrateHeroAnime(anime: Anime): Anime {
-        return runCatching {
-            animeRepository.getAnimeDetail(anime.id).anime
-        }.getOrElse {
-            anime
+    private suspend fun resolveSpanishHeroAnime(heroCandidate: Anime): Anime {
+        val hydratedCandidate = runCatching {
+            animeRepository.getAnimeDetail(heroCandidate.id).anime
+        }.getOrNull()
+
+        if (hydratedCandidate != null && hydratedCandidate.synopsis.isNotBlank()) {
+            return hydratedCandidate
         }
+
+        val backendHero = runCatching {
+            animeRepository.getHeroRecommendation()
+        }.getOrNull()
+
+        if (backendHero != null && backendHero.synopsis.isNotBlank()) {
+            return backendHero
+        }
+
+        return heroCandidate.copy(
+            synopsis = FALLBACK_SPANISH_SYNOPSIS
+        )
     }
 }
