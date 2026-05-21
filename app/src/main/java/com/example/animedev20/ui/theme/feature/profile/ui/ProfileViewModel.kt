@@ -3,6 +3,7 @@ package com.example.animedev20.ui.theme.feature.profile.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.domain.repository.FavoritesRepository
 import com.example.animedev20.ui.theme.domain.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,8 @@ import kotlinx.coroutines.launch
 
 class ProfileViewModel(
     private val userRepository: UserRepository,
-    private val favoritesRepository: FavoritesRepository
+    private val favoritesRepository: FavoritesRepository,
+    private val homeRefreshBus: HomeRefreshBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -22,6 +24,7 @@ class ProfileViewModel(
 
     init {
         observeProfileUpdates()
+        observeRefreshSignals()
         refresh()
     }
 
@@ -32,6 +35,7 @@ class ProfileViewModel(
             try {
                 userRepository.getUserProfile()
                 userRepository.getUserSettings()
+                runCatching { favoritesRepository.refreshFavorites() }
             } catch (error: Throwable) {
                 _uiState.update {
                     it.copy(
@@ -39,6 +43,14 @@ class ProfileViewModel(
                         errorMessage = error.message ?: "No fue posible cargar el perfil"
                     )
                 }
+            }
+        }
+    }
+
+    private fun observeRefreshSignals() {
+        viewModelScope.launch {
+            homeRefreshBus.events.collect {
+                refresh()
             }
         }
     }
@@ -82,18 +94,19 @@ class ProfileViewModel(
                     return@combine null
                 }
 
-                val triviaPlayedCount = profile.completedTrivias
+                val triviaResolvedCount = profile.completedTrivias
                 val favoriteCount = favoriteAnimes.size
 
                 ProfileUiState(
                     isLoading = false,
-                    profile = profile.copy(totalAnimesWatched = favoriteCount),
+                    profile = profile,
                     favoriteAnimes = favoriteAnimes,
+                    totalFavorites = favoriteCount,
                     fanLevel = buildFanLevel(
                         favoriteCount = favoriteCount,
-                        triviaCount = triviaPlayedCount
+                        triviaCount = triviaResolvedCount
                     ),
-                    triviaPlayedCount = triviaPlayedCount,
+                    triviaPlayedCount = triviaResolvedCount,
                     errorMessage = null
                 )
             }.collect { state ->
@@ -103,27 +116,27 @@ class ProfileViewModel(
     }
 
     private fun buildFanLevel(favoriteCount: Int, triviaCount: Int): String {
-        val score = favoriteCount + triviaCount
-
         return when {
-            score >= 20 -> "Otaku maestro"
-            score >= 12 -> "Muy fan del anime"
-            score >= 6 -> "Fan en crecimiento"
-            else -> "Explorador del anime"
+            favoriteCount >= 12 && triviaCount >= 15 -> "Top Global"
+            favoriteCount >= 8 && triviaCount >= 10 -> "OtakuPro"
+            favoriteCount >= 5 && triviaCount >= 7 -> "Aprendiz"
+            else -> "Novato"
         }
     }
 
     companion object {
         fun provideFactory(
             userRepository: UserRepository,
-            favoritesRepository: FavoritesRepository
+            favoritesRepository: FavoritesRepository,
+            homeRefreshBus: HomeRefreshBus
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(ProfileViewModel::class.java)) {
                     return ProfileViewModel(
                         userRepository = userRepository,
-                        favoritesRepository = favoritesRepository
+                        favoritesRepository = favoritesRepository,
+                        homeRefreshBus = homeRefreshBus
                     ) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")

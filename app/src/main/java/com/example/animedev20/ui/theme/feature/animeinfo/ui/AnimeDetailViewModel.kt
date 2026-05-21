@@ -1,5 +1,6 @@
 package com.example.animedev20.ui.theme.feature.animeinfo.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -26,6 +27,7 @@ class AnimeDetailViewModel(
     private var hasTrackedView: Boolean = false
 
     init {
+        refreshFavoritesSnapshot()
         observeFavoriteStatus()
         loadAnimeDetail()
     }
@@ -38,8 +40,13 @@ class AnimeDetailViewModel(
                 onSuccess = { detail ->
                     _uiState.value = AnimeDetailUiState.Success(detail, latestFavoriteState)
                     if (!hasTrackedView) {
-                        interactionRepository.trackView(detail.anime.id)
-                        hasTrackedView = true
+                        runCatching {
+                            interactionRepository.trackView(detail.anime.id)
+                        }.onSuccess {
+                            hasTrackedView = true
+                        }.onFailure { error ->
+                            Log.w(TAG, "No se pudo registrar la vista del anime ${detail.anime.id}", error)
+                        }
                     }
                 },
                 onFailure = { throwable ->
@@ -55,7 +62,23 @@ class AnimeDetailViewModel(
         val currentState = _uiState.value
         if (currentState is AnimeDetailUiState.Success) {
             viewModelScope.launch {
-                favoritesRepository.toggleFavorite(currentState.detail.anime)
+                runCatching {
+                    favoritesRepository.toggleFavorite(currentState.detail.anime)
+                }.onFailure { error ->
+                    Log.w(
+                        TAG,
+                        "No se pudo actualizar el favorito del anime ${currentState.detail.anime.id}",
+                        error
+                    )
+                }
+            }
+        }
+    }
+
+    private fun refreshFavoritesSnapshot() {
+        viewModelScope.launch {
+            runCatching {
+                favoritesRepository.refreshFavorites()
             }
         }
     }
@@ -73,6 +96,8 @@ class AnimeDetailViewModel(
     }
 
     companion object {
+        private const val TAG = "AnimeDetailViewModel"
+
         fun provideFactory(
             animeId: Long,
             animeRepository: AnimeRepository,

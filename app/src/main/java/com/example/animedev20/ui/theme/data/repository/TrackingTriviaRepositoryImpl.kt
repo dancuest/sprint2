@@ -13,15 +13,24 @@ class TrackingTriviaRepositoryImpl(
     private val interactionRepository: InteractionRepository,
     private val homeRefreshBus: HomeRefreshBus
 ) : TriviaRepository {
+
     override fun getTriviaSummaries(): Flow<List<TriviaSummary>> = delegate.getTriviaSummaries()
 
-    override suspend fun getQuestions(animeId: Long, difficulty: TriviaDifficulty): List<TriviaQuestion> {
+    override suspend fun getQuestions(
+        animeId: Long,
+        difficulty: TriviaDifficulty
+    ): List<TriviaQuestion> {
         return delegate.getQuestions(animeId, difficulty)
     }
 
-    override suspend fun recordResult(animeId: Long, difficulty: TriviaDifficulty, score: Int, totalQuestions: Int) {
-        delegate.recordResult(animeId, difficulty, score, totalQuestions)
+    override suspend fun recordResult(
+        animeId: Long,
+        difficulty: TriviaDifficulty,
+        score: Int,
+        totalQuestions: Int
+    ) {
         interactionRepository.trackTriviaScore(animeId, score, totalQuestions)
+        delegate.recordResult(animeId, difficulty, score, totalQuestions)
         homeRefreshBus.trigger()
     }
 }

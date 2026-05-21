@@ -5,7 +5,7 @@ import com.example.animedev20.ui.theme.data.refresh.HomeRefreshBus
 import com.example.animedev20.ui.theme.data.remote.AnimeApi
 import com.example.animedev20.ui.theme.data.remote.AuthApiPlain
 import com.example.animedev20.ui.theme.data.remote.AuthTokenStore
-import com.example.animedev20.ui.theme.data.remote.DeviceLoginRequest
+import com.example.animedev20.ui.theme.data.remote.ChangePasswordRequest
 import com.example.animedev20.ui.theme.data.remote.GenreDto
 import com.example.animedev20.ui.theme.data.remote.UpdateProfileRequest
 import com.example.animedev20.ui.theme.data.remote.UpdateSettingsRequest
@@ -14,6 +14,7 @@ import com.example.animedev20.ui.theme.data.remote.UserSettingsDto
 import com.example.animedev20.ui.theme.data.remote.UsersApi
 import com.example.animedev20.ui.theme.domain.model.DurationType
 import com.example.animedev20.ui.theme.domain.model.Genre
+import com.example.animedev20.ui.theme.domain.model.USER_ROLE
 import com.example.animedev20.ui.theme.domain.model.UserDemographicCatalog
 import com.example.animedev20.ui.theme.domain.model.UserProfile
 import com.example.animedev20.ui.theme.domain.model.UserSettings
@@ -39,11 +40,14 @@ class RemoteUserRepositoryImpl(
 
     fun initialize(context: Context) {
         if (isInitialized) return
+
         deviceId = tokenStore.getOrCreateDeviceId(context)
         isInitialized = true
     }
 
-    override suspend fun getPreferredGenres(): List<Genre> = getUserSettings().preferredGenres
+    override suspend fun getPreferredGenres(): List<Genre> {
+        return getUserSettings().preferredGenres
+    }
 
     override suspend fun getUserProfile(): UserProfile {
         initialize(context)
@@ -51,10 +55,13 @@ class RemoteUserRepositoryImpl(
 
         val profile = usersApi.me().toDomain(profileFlow.value)
         profileFlow.value = profile
+
         return profile
     }
 
-    override fun observeUserProfile(): Flow<UserProfile> = profileFlow.asStateFlow()
+    override fun observeUserProfile(): Flow<UserProfile> {
+        return profileFlow.asStateFlow()
+    }
 
     override suspend fun getUserSettings(): UserSettings {
         ensureAuthenticated()
@@ -82,12 +89,18 @@ class RemoteUserRepositoryImpl(
         )
 
         homeRefreshBus.trigger()
+
         return updated
     }
 
     override suspend fun updatePreferredGenres(genres: List<Genre>): List<Genre> {
         val current = getUserSettings()
-        return updateUserSettings(current.copy(preferredGenres = genres)).preferredGenres
+
+        return updateUserSettings(
+            current.copy(
+                preferredGenres = genres
+            )
+        ).preferredGenres
     }
 
     override suspend fun updateAccountInfo(
@@ -102,6 +115,7 @@ class RemoteUserRepositoryImpl(
         val updated = usersApi.updateProfile(
             UpdateProfileRequest(
                 displayName = name,
+                nickname = nickname,
                 email = normalizedEmail
             )
         ).toDomain(
@@ -113,12 +127,28 @@ class RemoteUserRepositoryImpl(
         )
 
         val merged = updated.copy(
+            name = name.ifBlank { updated.name },
             nickname = nickname.ifBlank { updated.nickname },
             email = normalizedEmail ?: updated.email
         )
 
         profileFlow.value = merged
+
         return merged
+    }
+
+    override suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String
+    ) {
+        ensureAuthenticated()
+
+        usersApi.changePassword(
+            ChangePasswordRequest(
+                currentPassword = currentPassword,
+                newPassword = newPassword
+            )
+        )
     }
 
     override suspend fun updateProfileImages(
@@ -136,20 +166,26 @@ class RemoteUserRepositoryImpl(
 
         val merged = updated.copy(
             avatarUrl = avatarUrl ?: updated.avatarUrl,
-            coverImageUrl = coverImageUrl ?: updated.coverImageUrl
+            coverImageUrl = coverImageUrl ?: updated.coverImageUrl,
+            nickname = profileFlow.value.nickname,
+            name = profileFlow.value.name
         )
 
         profileFlow.value = merged
+
         return merged
     }
 
     private suspend fun ensureAuthenticated() {
         initialize(context)
 
-        if (tokenStore.getToken().isNullOrBlank()) {
-            val login = authApi.loginDevice(DeviceLoginRequest(deviceId))
-            tokenStore.saveToken(login.accessToken)
-            tokenStore.saveUserId(login.userId)
+        val token = tokenStore.getToken()
+        val userId = tokenStore.getUserId()
+
+        if (token.isNullOrBlank() || userId.isNullOrBlank()) {
+            throw IllegalStateException(
+                "No hay una sesión activa válida.\nInicia sesión nuevamente."
+            )
         }
     }
 
@@ -159,12 +195,13 @@ class RemoteUserRepositoryImpl(
         return current.copy(
             id = id,
             name = display ?: current.name,
-            nickname = display ?: current.nickname,
+            nickname = nickname?.takeIf { it.isNotBlank() } ?: current.nickname,
             email = email ?: current.email,
             avatarUrl = avatarUrl ?: current.avatarUrl,
             coverImageUrl = coverImageUrl ?: current.coverImageUrl,
             completedTrivias = completedTrivias ?: current.completedTrivias,
-            totalAnimesWatched = favoriteCount ?: current.totalAnimesWatched
+            totalAnimesWatched = favoriteCount ?: current.totalAnimesWatched,
+            role = role?.takeIf { it.isNotBlank() } ?: current.role
         )
     }
 
@@ -188,7 +225,9 @@ class RemoteUserRepositoryImpl(
         )
     }
 
-    private suspend fun resolvePreferredGenres(settings: UserSettingsDto): List<Genre> {
+    private suspend fun resolvePreferredGenres(
+        settings: UserSettingsDto
+    ): List<Genre> {
         settings.preferredGenreDetails
             ?.takeIf { it.isNotEmpty() }
             ?.let { details ->
@@ -196,18 +235,32 @@ class RemoteUserRepositoryImpl(
             }
 
         val preferredIds = settings.preferredGenres
-        if (preferredIds.isEmpty()) return emptyList()
+
+        if (preferredIds.isEmpty()) {
+            return emptyList()
+        }
 
         ensureGenresCache()
-        return preferredIds.mapNotNull { genreId -> cachedGenresById[genreId]?.toDomainModel() }
+
+        return preferredIds.mapNotNull { genreId ->
+            cachedGenresById[genreId]?.toDomainModel()
+        }
     }
 
     private suspend fun ensureGenresCache() {
-        if (cachedGenresById.isNotEmpty()) return
+        if (cachedGenresById.isNotEmpty()) {
+            return
+        }
 
-        val genres = animeApi.getGenres().data
+        val genres = animeApi.getGenres(includeAdult = true).data
+
         cachedGenresById = genres.mapNotNull { genre ->
-            genre.id.toIntOrNull()?.let { id -> id to GenreDto(id = id, name = genre.name) }
+            genre.id.toIntOrNull()?.let { id ->
+                id to GenreDto(
+                    id = id,
+                    name = genre.name
+                )
+            }
         }.toMap()
     }
 
@@ -235,36 +288,43 @@ class RemoteUserRepositoryImpl(
     }
 
     private fun String.toDurationTypeOrNull(): DurationType? {
-        return DurationType.entries.firstOrNull { it.name.equals(this, ignoreCase = true) }
+        return DurationType.entries.firstOrNull { duration ->
+            duration.name.equals(this, ignoreCase = true)
+        }
     }
 
-    private fun emptyUserProfile(): UserProfile = UserProfile(
-        id = "",
-        name = "",
-        nickname = "",
-        email = "",
-        avatarUrl = "",
-        knowledgeLevel = "",
-        xpPoints = 0,
-        biography = "",
-        totalAnimesWatched = 0,
-        completedTrivias = 0,
-        preferredDurations = emptyList(),
-        favoriteGenres = emptyList(),
-        badges = emptyList(),
-        favoriteQuote = null,
-        coverImageUrl = ""
-    )
+    private fun emptyUserProfile(): UserProfile {
+        return UserProfile(
+            id = "",
+            name = "",
+            nickname = "",
+            email = "",
+            avatarUrl = "",
+            knowledgeLevel = "",
+            xpPoints = 0,
+            biography = "",
+            totalAnimesWatched = 0,
+            completedTrivias = 0,
+            preferredDurations = emptyList(),
+            favoriteGenres = emptyList(),
+            badges = emptyList(),
+            favoriteQuote = null,
+            coverImageUrl = "",
+            role = USER_ROLE
+        )
+    }
 
-    private fun emptyUserSettings(): UserSettings = UserSettings(
-        ageRange = UserDemographicCatalog.UNSPECIFIED_CODE,
-        genderCode = UserDemographicCatalog.UNSPECIFIED_CODE,
-        regionCode = UserDemographicCatalog.UNSPECIFIED_CODE,
-        preferredGenres = emptyList(),
-        preferredDurations = emptyList(),
-        notificationsEnabled = true,
-        culturalAlertsEnabled = true,
-        autoplayNextEpisode = true,
-        hasCompletedOnboarding = false
-    )
+    private fun emptyUserSettings(): UserSettings {
+        return UserSettings(
+            ageRange = UserDemographicCatalog.UNSPECIFIED_CODE,
+            genderCode = UserDemographicCatalog.UNSPECIFIED_CODE,
+            regionCode = UserDemographicCatalog.UNSPECIFIED_CODE,
+            preferredGenres = emptyList(),
+            preferredDurations = emptyList(),
+            notificationsEnabled = true,
+            culturalAlertsEnabled = true,
+            autoplayNextEpisode = true,
+            hasCompletedOnboarding = false
+        )
+    }
 }

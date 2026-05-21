@@ -1,22 +1,15 @@
 package com.example.animedev20.ui.theme.data.repository
 
-import android.util.Log
 import com.example.animedev20.ui.theme.data.remote.InteractionRequest
 import com.example.animedev20.ui.theme.data.remote.InteractionsApi
 import com.example.animedev20.ui.theme.domain.repository.InteractionRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 class RemoteInteractionRepositoryImpl(
     private val interactionsApi: InteractionsApi
 ) : InteractionRepository {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    override fun trackView(animeId: Long) {
-        postAsync(
+    override suspend fun trackView(animeId: Long) {
+        interactionsApi.postInteraction(
             InteractionRequest(
                 type = "VIEW",
                 animeId = animeId
@@ -24,8 +17,8 @@ class RemoteInteractionRepositoryImpl(
         )
     }
 
-    override fun trackFavorite(animeId: Long) {
-        postAsync(
+    override suspend fun trackFavorite(animeId: Long) {
+        interactionsApi.postInteraction(
             InteractionRequest(
                 type = "FAVORITE",
                 animeId = animeId
@@ -33,8 +26,8 @@ class RemoteInteractionRepositoryImpl(
         )
     }
 
-    override fun trackUnfavorite(animeId: Long) {
-        postAsync(
+    override suspend fun trackUnfavorite(animeId: Long) {
+        interactionsApi.postInteraction(
             InteractionRequest(
                 type = "UNFAVORITE",
                 animeId = animeId
@@ -42,8 +35,8 @@ class RemoteInteractionRepositoryImpl(
         )
     }
 
-    override fun trackTriviaScore(animeId: Long, score: Int, totalQuestions: Int) {
-        postAsync(
+    override suspend fun trackTriviaScore(animeId: Long, score: Int, totalQuestions: Int) {
+        interactionsApi.postInteraction(
             InteractionRequest(
                 type = "TRIVIA_SCORE",
                 animeId = animeId,
@@ -53,14 +46,5 @@ class RemoteInteractionRepositoryImpl(
                 )
             )
         )
-    }
-
-    private fun postAsync(request: InteractionRequest) {
-        scope.launch {
-            runCatching { interactionsApi.postInteraction(request) }
-                .onFailure { error ->
-                    Log.w("Interactions", "Unable to post interaction ${request.type}", error)
-                }
-        }
     }
 }

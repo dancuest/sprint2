@@ -47,7 +47,7 @@ object FakeUserRepositoryImpl : UserRepository {
             ?: defaultSettings.preferredGenres
 
         val restoredDurations = prefs.getStringSet(KEY_DURATIONS, null)
-            ?.mapNotNull { name -> DurationType.values().firstOrNull { it.name == name } }
+            ?.mapNotNull { name -> DurationType.entries.firstOrNull { it.name == name } }
             ?.ifEmpty { null }
             ?: defaultSettings.preferredDurations
 
@@ -127,6 +127,25 @@ object FakeUserRepositoryImpl : UserRepository {
         profileFlow.value = updatedProfile
         persistState()
         return updatedProfile
+    }
+
+    override suspend fun changePassword(currentPassword: String, newPassword: String) {
+        delay(500)
+        // No-op for fake implementation
+    }
+
+    override suspend fun updateProfileImages(
+        avatarUrl: String?,
+        coverImageUrl: String?
+    ): UserProfile {
+        delay(500)
+        val current = profileFlow.value
+        val updated = current.copy(
+            avatarUrl = avatarUrl ?: current.avatarUrl,
+            coverImageUrl = coverImageUrl ?: current.coverImageUrl
+        )
+        profileFlow.value = updated
+        return updated
     }
 
     private fun persistState() {

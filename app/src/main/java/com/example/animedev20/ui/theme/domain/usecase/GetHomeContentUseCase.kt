@@ -14,66 +14,72 @@ class GetHomeContentUseCase(
 ) {
 
     private companion object {
-        private const val THROTTLE_MS = 250L
+        private const val THROTTLE_MS = 500L
+        private const val RETRY_DELAY_MS = 1_200L
+        private const val MAX_ATTEMPTS_PER_GENRE = 1
         private const val TARGET_SECTION_SIZE = 10
-        private const val MAX_REPEAT_PER_SECTION = 2
+
+        private const val FALLBACK_SPANISH_SYNOPSIS =
+            "Toca para ver la información completa de este anime y descubrir por qué puede encajar con tus gustos."
     }
 
     suspend operator fun invoke(): Result<HomeContent> = try {
-
-        // HERO (protegido contra fallo de API)
-        val heroAnime = runCatching {
-            animeRepository.getHeroRecommendation()
-        }.getOrNull() ?: throw Exception("No se pudo cargar el contenido principal.")
-
         val preferredGenres = runCatching {
             userRepository.getPreferredGenres()
-        }.getOrElse { emptyList() }
+        }.getOrElse {
+            emptyList()
+        }.distinctBy { it.id }
+
+        val adaptiveRecommendations = runCatching {
+            animeRepository.getAdaptiveRecommendations()
+        }.getOrElse {
+            emptyList()
+        }.distinctBy { it.id }
+
+        val heroCandidate = adaptiveRecommendations.firstOrNull()
+            ?: resolveHeroAnime(preferredGenres)
+            ?: return Result.failure(
+                Exception("No se pudo cargar el contenido principal. Verifica tu conexión.")
+            )
+
+        /**
+         * Regla de negocio:
+         * El hero principal del Home nunca debe mostrar una sinopsis en inglés.
+         *
+         * Las recomendaciones adaptativas y los listados por género pueden venir como
+         * Anime resumido. Por eso aquí se fuerza hidratación usando /anime/{id}/detail.
+         * Si esa hidratación falla, se intenta usar el hero general del backend.
+         * Si todo falla, se conserva el anime candidato pero con copy seguro en español.
+         */
+        val heroAnime = resolveSpanishHeroAnime(heroCandidate)
+
+        val recommendationList = resolveRecommendationList(
+            heroAnime = heroAnime,
+            adaptiveRecommendations = adaptiveRecommendations,
+            preferredGenres = preferredGenres
+        )
 
         val usedAnimeIds = linkedSetOf<Long>()
-
         usedAnimeIds += heroAnime.id
 
         val sections = mutableListOf<AnimeSection>()
 
-        // RECOMENDACIONES ADAPTATIVAS
-        val recommendationCandidates = runCatching {
-            animeRepository.getAdaptiveRecommendations()
-        }.getOrElse { emptyList() }
-
-        val recommendationList = recommendationCandidates
-            .filterNot { it.id in usedAnimeIds }
-            .take(TARGET_SECTION_SIZE)
-
         if (recommendationList.isNotEmpty()) {
             usedAnimeIds += recommendationList.map { it.id }
-
             sections += AnimeSection(
                 genre = Genre("recommendations", "Para Ti"),
-                animes = recommendationList
+                animes = recommendationList,
+                source = "adaptive"
             )
         }
 
-        // SECCIONES POR GENERO
-        for ((index, genre) in preferredGenres.withIndex()) {
-
-            val candidates = runCatching {
-                animeRepository.getAnimesByGenre(genre.id)
-            }.getOrElse { emptyList() }
+        for (genre in preferredGenres) {
+            val candidates = loadGenreCandidates(genre.id)
 
             val uniqueItems = candidates
+                .distinctBy { it.id }
                 .filterNot { it.id in usedAnimeIds }
                 .take(TARGET_SECTION_SIZE)
-                .toMutableList()
-
-            if (uniqueItems.size < TARGET_SECTION_SIZE) {
-
-                val repeats = candidates
-                    .filterNot { anime -> uniqueItems.any { it.id == anime.id } }
-                    .take(MAX_REPEAT_PER_SECTION)
-
-                uniqueItems += repeats
-            }
 
             if (uniqueItems.isNotEmpty()) {
                 usedAnimeIds += uniqueItems.map { it.id }
@@ -81,10 +87,6 @@ class GetHomeContentUseCase(
                     genre = genre,
                     animes = uniqueItems
                 )
-            }
-
-            if (index != preferredGenres.lastIndex) {
-                delay(THROTTLE_MS)
             }
         }
 
@@ -95,8 +97,113 @@ class GetHomeContentUseCase(
                 sections = sections
             )
         )
-
     } catch (e: Exception) {
         Result.failure(e)
+    }
+
+    private suspend fun resolveRecommendationList(
+        heroAnime: Anime,
+        adaptiveRecommendations: List<Anime>,
+        preferredGenres: List<Genre>
+    ): List<Anime> {
+        val uniqueRecommendations = linkedMapOf<Long, Anime>()
+
+        // 1) Prioridad absoluta: resultados adaptativos del backend.
+        adaptiveRecommendations
+            .asSequence()
+            .filterNot { it.id == heroAnime.id }
+            .forEach { anime ->
+                if (uniqueRecommendations.size < TARGET_SECTION_SIZE) {
+                    uniqueRecommendations.putIfAbsent(anime.id, anime)
+                }
+            }
+
+        if (uniqueRecommendations.size >= TARGET_SECTION_SIZE) {
+            return uniqueRecommendations.values.toList()
+        }
+
+        // 2) Relleno controlado SOLO con géneros preferidos del usuario.
+        val preferredGenreIds = preferredGenres.map { it.id }.distinct()
+
+        for (genreId in preferredGenreIds) {
+            val candidates = loadGenreCandidates(genreId)
+
+            for (anime in candidates) {
+                if (anime.id == heroAnime.id) continue
+
+                uniqueRecommendations.putIfAbsent(anime.id, anime)
+
+                if (uniqueRecommendations.size >= TARGET_SECTION_SIZE) {
+                    return uniqueRecommendations.values.toList()
+                }
+            }
+        }
+
+        return uniqueRecommendations.values.toList()
+    }
+
+    private suspend fun loadGenreCandidates(genreId: String): List<Anime> {
+        repeat(MAX_ATTEMPTS_PER_GENRE) { attempt ->
+            delay(THROTTLE_MS)
+
+            val items = runCatching {
+                animeRepository.getAnimesByGenre(genreId)
+            }.getOrElse {
+                emptyList()
+            }
+
+            if (items.isNotEmpty()) {
+                return items
+            }
+
+            if (attempt < MAX_ATTEMPTS_PER_GENRE - 1) {
+                delay(RETRY_DELAY_MS)
+            }
+        }
+
+        return emptyList()
+    }
+
+    /**
+     * Resuelve el anime hero con fallback progresivo:
+     * 1. Primer anime del primer género preferido del usuario
+     * 2. Hero general del backend como último recurso
+     */
+    private suspend fun resolveHeroAnime(preferredGenres: List<Genre>): Anime? {
+        if (preferredGenres.isNotEmpty()) {
+            runCatching {
+                animeRepository.getAnimesByGenre(preferredGenres.first().id).firstOrNull()
+            }.onSuccess { anime ->
+                if (anime != null) {
+                    return anime
+                }
+            }
+        }
+
+        return runCatching {
+            animeRepository.getHeroRecommendation()
+        }.getOrNull()
+    }
+
+    private suspend fun resolveSpanishHeroAnime(heroCandidate: Anime): Anime {
+        val hydratedCandidate = runCatching {
+            animeRepository.getAnimeDetail(heroCandidate.id).anime
+        }.getOrNull()
+
+        if (hydratedCandidate != null && hydratedCandidate.synopsis.isNotBlank()) {
+            return hydratedCandidate
+        }
+
+        val backendHero = runCatching {
+            animeRepository.getHeroRecommendation()
+        }.getOrNull()
+
+        if (backendHero != null && backendHero.synopsis.isNotBlank()) {
+            return backendHero
+        }
+
+        return heroCandidate.copy(
+            synopsis = FALLBACK_SPANISH_SYNOPSIS
+        )
     }
 }

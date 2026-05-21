@@ -20,6 +20,8 @@ interface UserRepository {
 
     suspend fun updateAccountInfo(name: String, email: String, nickname: String): UserProfile
 
+    suspend fun changePassword(currentPassword: String, newPassword: String)
+
     suspend fun updateProfileImages(
         avatarUrl: String? = null,
         coverImageUrl: String? = null

@@ -21,6 +21,18 @@ class FavoritesViewModel(
             initialValue = emptyList()
         )
 
+    init {
+        refreshFavorites()
+    }
+
+    fun refreshFavorites() {
+        viewModelScope.launch {
+            runCatching {
+                favoritesRepository.refreshFavorites()
+            }
+        }
+    }
+
     fun removeFavorite(animeId: Long) {
         viewModelScope.launch {
             favoritesRepository.removeFavorite(animeId)
